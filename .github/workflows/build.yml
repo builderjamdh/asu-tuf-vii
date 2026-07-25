@@ -120,8 +120,10 @@ jobs:
             echo "Creating libreadline.so.6 compat symlink..."
             READLINE8=$(find /usr/lib -name "libreadline.so.8" 2>/dev/null | head -1)
             if [ -n "$READLINE8" ]; then
-              sudo ln -sf "$READLINE8" "$(dirname "$READLINE8")/libreadline.so.6"
+              sudo ln -sf "$READLINE8" "$(dirname "$READLINE8")/libreadline.so.6" || true
               echo "  $READLINE8 -> libreadline.so.6"
+            else
+              echo "  libreadline.so.8 not found, skipping compat symlink"
             fi
           fi
 
@@ -136,7 +138,7 @@ jobs:
               f="$toolchain_dir/usr/bin/$bad"
               if [ -f "$f" ]; then
                 echo "  Disabling toolchain $bad at $f..."
-                sudo mv "$f" "$f.disabled"
+                sudo mv "$f" "$f.disabled" 2>/dev/null || echo "  (non-fatal) failed to disable $bad"
               fi
             done
           done
@@ -153,7 +155,7 @@ jobs:
           # ubuntu-latest 的 /bin/sh 是 dash，但 make 内部的 shell 命令
           # （echo -e, [[ ]] 等）需要 bash。不改会导致 Kconfig.autogen
           # 生成垃圾内容，kernel olddefconfig 直接 syntax error。
-          sudo ln -sf bash /bin/sh
+          sudo ln -sf bash /bin/sh 2>/dev/null || true
           ls -la /bin/sh
 
           echo "$TC_PATH/usr/bin" >> "$GITHUB_PATH"
