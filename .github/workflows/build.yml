@@ -113,19 +113,22 @@ jobs:
           sudo chmod -R a+rX /opt/toolchains
 
           # 工具链自带的 bison 链接了 libreadline.so.6；
-          # ubuntu-latest（24.04）只有 .so.8，缺这个符号链接会让
-          # uboot / kernel Kconfig 生成步骤报 Error 127。
-          # .so.6->.so.8 的 ABI 向前兼容，只影响 bison 这一个宿主工具。
-          if ! ldconfig -p 2>/dev/null | grep -qF "libreadline.so.6"; then
+          # 缺少这个符号链接会让 uboot / kernel Kconfig 报 Error 127。
+          # WSL/自托管 runner 的 ldconfig 可能无权限，容错处理。
+          set +e
+          if ldconfig -p 2>/dev/null | grep -qF "libreadline.so.6"; then
+            echo "libreadline.so.6 compat already exists"
+          else
             echo "Creating libreadline.so.6 compat symlink..."
-            READLINE8=$(find /usr/lib -name "libreadline.so.8" 2>/dev/null | head -1)
+            READLINE8=$(find /usr/lib /lib -name "libreadline.so.8" 2>/dev/null | head -1)
             if [ -n "$READLINE8" ]; then
-              sudo ln -sf "$READLINE8" "$(dirname "$READLINE8")/libreadline.so.6" || true
+              sudo ln -sf "$READLINE8" "$(dirname "$READLINE8")/libreadline.so.6" 2>/dev/null || true
               echo "  $READLINE8 -> libreadline.so.6"
             else
-              echo "  libreadline.so.8 not found, skipping compat symlink"
+              echo "  libreadline.so.8 not found, skipping compat symlink (non-fatal)"
             fi
           fi
+          set -e
 
           # 工具链自带 automake/autoconf 等宿主工具是给旧发行版编的，
           # ubuntu-latest 缺少它们的依赖库，导致 "cannot execute:
