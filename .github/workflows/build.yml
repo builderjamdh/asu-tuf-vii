@@ -439,9 +439,11 @@ jobs:
           # 已成功的目标，只编译阶段1失败的包。
           # 此时依赖库已全就位，几乎零失败。
           # ==============================
-          # 阶段2前锁定内核配置，防止 make 重复触发 syncconfig
-          touch "$SRCDIR/kernel/linux-4.19/include/config/auto.conf" 2>/dev/null || true
-          touch "$SRCDIR/kernel/linux-4.19/include/generated/autoconf.h" 2>/dev/null || true
+          # 阶段2前锁定内核配置：olddefconfig 无交互解决
+          # 所有新选项，KCONFIG_ALLCONFIG 提供 defaults
+          if [ -f "$SRCDIR/kernel/linux-4.19/.config" ]; then
+            make -C "$SRCDIR/kernel/linux-4.19" olddefconfig -j1 -s 2>/dev/null || true
+          fi
           fix_permissions
           populate_prebuilt
           echo "=== Phase 2/2: retry failed targets (-j$(nproc)) ==="
