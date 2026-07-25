@@ -410,95 +410,48 @@ jobs:
             fi
           }
 
-          MAX_RETRIES=4
-          RESULT=1
-          NPROC=$(nproc)
-          for i in $(seq 1 $MAX_RETRIES); do
-            fix_permissions
-            populate_prebuilt
-            apply_kernel_conf_patch
+          # ---- 一次性配置 patch（不随阶段重复） ----
+          sed -i 's/# CONFIG_BCM_CPUFREQ is not set/CONFIG_BCM_CPUFREQ=y/' "$SRCDIR/kernel/linux-4.19/config_base.6a.6764"
+          echo "CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y" >> "$SRCDIR/kernel/linux-4.19/config_base.6a.6764"
+          export KCONFIG_ALLCONFIG=/dev/null
+          export ac_cv_prog_cc_works=yes
+          export ac_cv_prog_cc_cross=yes
+          export ac_cv_prog_cxx_works=yes
+          export ac_cv_prog_cxx_cross=yes
+          rm -rf "$SRCDIR/targets/96764GW/fs.build" 2>/dev/null || true
+          if [ -f release/src/router/iperf3/configure ]; then
+            (cd release/src/router/iperf3 && autoreconf -i -f 2>/dev/null) || true
+          fi
 
-            if [ "$i" -eq 1 ]; then
-              JOBS=1
-              echo "=== Build attempt $i/$MAX_RETRIES (sequential, generating deps) ==="
-            else
-              JOBS=$NPROC
-              echo "=== Build attempt $i/$MAX_RETRIES (parallel, -j$JOBS) ==="
-            fi
+          # ==============================
+          # 阶段1：单线程打地基 —— 生成所有
+          # 依赖库、头文件，确保时序正确。
+          # ==============================
+          fix_permissions
+          populate_prebuilt
+          apply_kernel_conf_patch
+          echo "=== Phase 1/2: sequential deps build (-j1) ==="
+          set +e
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j1 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
+          R1=${PIPESTATUS[0]}
+          set -e
+          echo "Phase 1 exit code: $R1"
 
-            set +e
-            # -k：单次调用内尽量把独立的目标都跑完，不要一遇到失败就整体中止；
-            # 这样即使 shared 因为 autoconf.h/version.h 还没生成而编译失败，
-            # busybox / 版本生成、以及 bcm_enet.o 这类独立组件仍有机会在同一轮
-            # 里跑完，让 populate_prebuilt 在下一轮重试前有真实产物可抓。
-            # -s 静默模式，抑制 make 输出，避免 build.log 文件过大；
-            # 最终阶段根据 build.log 提取真实错误信息。
-            # FORCE=1：跳过 prebuild_checks.mk 中工具链交叉编译目录/缺少
-            # 库头文件等宿主环境检测（prebuild_checks 内部所有 exit 1 都有
-            # if [ -z "$FORCE" ] 守卫，设置 FORCE 后降级为警告）。
-            # Merlin/华硕内部构建也是类似做法，不逐项修复每个 check。
-
-            # BCM6764 不支持 cpuidle 时钟分频（只支持 94908/96856/96858），
-            # 改用 CONFIG_BCM_CPUFREQ。cpufreq 驱动 (bcm63xx-cpufreq.c)
-            # 同样提供 bcm_cpufreq_set_freq_max()，解决 thermal 模块的
-            # undefined symbol 链接错误。
-            sed -i 's/# CONFIG_BCM_CPUFREQ is not set/CONFIG_BCM_CPUFREQ=y/' "$SRCDIR/kernel/linux-4.19/config_base.6a.6764"
-            # CONFIG_BCM_CPUFREQ 依赖 CPUFREQ，激活后 kernel syncconfig
-            # 会跳出 governor 交互选择。同时设 config + 环境变量
-            # KCONFIG_ALLCONFIG 让内核自动拿默认值而不读 EOF。
-            echo "CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y" >> "$SRCDIR/kernel/linux-4.19/config_base.6a.6764"
-            export KCONFIG_ALLCONFIG=/dev/null
-
-            # WSL2 自托管 runner: autotools configure 脚本检测交叉编译器
-            # 时尝试链接测试程序失败（缺 sysroot）。设 cache 变量跳过
-            # 编译器能力检测，避免 "C compiler cannot create executables"。
-            export ac_cv_prog_cc_works=yes
-            export ac_cv_prog_cc_cross=yes
-            export ac_cv_prog_cxx_works=yes
-            export ac_cv_prog_cxx_cross=yes
-
-            # WSL2/自托管 runner: 上次构建可能残留 fs.build 目录，
-            # 构建系统的 rm (非 rm -r) 删不掉非空目录。
-            rm -rf "$SRCDIR/targets/96764GW/fs.build" 2>/dev/null || true
-
-            # iperf3 的 configure 由旧 autoconf 生成，缺 ac_fn_c_try_cpp
-            # 等辅助函数导致预处理检查失败。用系统 autoreconf 重新生成。
-            if [ -f release/src/router/iperf3/configure ]; then
-              (cd release/src/router/iperf3 && autoreconf -i -f 2>/dev/null) || true
-            fi
-
-            FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j"$JOBS" -k -s 2>&1 | tee -a "$SRCDIR/build.log"
-            RESULT=${PIPESTATUS[0]}
-            set -e
-
-            if [ "$RESULT" -eq 0 ]; then
-              echo "Build succeeded on attempt $i."
-              break
-            fi
-
-            echo "Build failed (exit $RESULT). Retrying..."
-            sleep 2
-          done
+          # ==============================
+          # 阶段2：全核飙收尾 —— 地基打好后
+          # 18核并处理第一阶段未完成的部分。
+          # ==============================
+          fix_permissions
+          populate_prebuilt
+          echo "=== Phase 2/2: full parallel build (-j$(nproc)) ==="
+          set +e
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j$(nproc) -k -s 2>&1 | tee -a "$SRCDIR/build.log"
+          RESULT=${PIPESTATUS[0]}
+          set -e
 
           if [ "$RESULT" -ne 0 ]; then
-            echo "=== All retries exhausted, extracting real error lines ==="
+            echo "=== Build failed, extracting error lines ==="
             grep -nE "error:|Error [0-9]+|No such file or directory" "$SRCDIR/build.log" | tail -n 80
-
-            echo ""
-            echo "=== Checking prebuilt blobs ==="
-            DST="$SRCDIR/router-sysdep/hnd_extra/prebuilt"
-            MISSING=0
-            for f in rdpa.o rdpa_gpl.o rdpa_usr.o bdmf.o board_button.o board_dg.o board_wd.o; do
-              if [ ! -f "$DST/$f" ]; then
-                echo "  MISSING: $DST/$f"
-                MISSING=1
-              fi
-            done
-            if [ "$MISSING" -eq 1 ]; then
-              echo ""
-              echo "以上文件无法自动生成。需从同芯片(BCM6764)型号 GPL 包或"
-              echo "华硕官方补充二进制包获取，放入 blobs/ 目录并改 workflow 拷贝。"
-            fi
           fi
 
           test "$RESULT" -eq 0
