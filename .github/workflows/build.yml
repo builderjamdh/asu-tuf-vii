@@ -454,6 +454,27 @@ jobs:
 
           test "$RESULT" -eq 0
 
+      - name: Validate Firmware
+        if: success()
+        run: |
+          FW=$(find "$SRCDIR" -maxdepth 3 \( -name '*.trx' -o -name '*.w' -o -name '*.bin' \) 2>/dev/null | head -1)
+          if [ -z "$FW" ]; then
+            echo "!! No firmware image found!"
+            exit 1
+          fi
+          SIZE=$(stat -c%s "$FW" 2>/dev/null || stat -f%z "$FW" 2>/dev/null)
+          echo "Firmware: $FW  ($SIZE bytes)"
+          if [ "$SIZE" -lt 10485760 ]; then   # < 10MB = 异常
+            echo "!! Firmware too small ($SIZE bytes), likely incomplete!"
+            exit 1
+          fi
+          # TRX 魔数校验 (HDR0)
+          if head -c4 "$FW" | grep -q 'HDR0'; then
+            echo "TRX header valid (HDR0)"
+          else
+            echo "! TRX header missing, image may be corrupted"
+          fi
+
       - name: Collect Artifacts
         if: success()
         run: |
