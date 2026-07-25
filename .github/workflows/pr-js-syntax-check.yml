@@ -1,0 +1,225 @@
+# This is a basic workflow to help you get started with Actions
+
+name: PR JS Syntax Check
+
+on:
+  pull_request:
+    paths:
+      - '**.js'
+      - '**.dict'
+      - '**.asp'
+      - '**.htm'
+      - '**.html'
+
+jobs:
+  syntax-check-RT:
+    name: Syntax Check - ${{ matrix.product }} - ${{ matrix.region }}
+    strategy:
+      matrix:
+        product: [ 'RT' ]
+        region: [ 'BR', 'CN', 'CZ', 'DA', 'DE', 'EN', 'ES', 'FI', 'FR', 'HU', 'IT', 'JP', 'KR', 'MS', 'NL', 'NO', 'PL', 'RO', 'RU', 'SL', 'SV', 'TH', 'TR', 'TW', 'UK' ]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: release/src/router/www
+
+      - name: Get branch name
+        run: echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Checkout github_action files
+        uses: actions/checkout@v4
+        with:
+          repository: ASUS-WL/github-action-web
+          ref: main
+          path: github_action_files
+          token: ${{ secrets.GA_PAT }}
+
+      - name: Copy github_action files
+        run: cp github_action_files/* ./release/src/router/www/
+
+      - name: Cache Node.js modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Install dependencies
+        working-directory: ./release/src/router/www
+        run: npm install
+
+      - name: Run syntax check
+        working-directory: ./release/src/router/www
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: ${{ env.BRANCH_NAME }}
+          PRODUCT: ${{ matrix.product }}
+        run: npm run check-pr-lang-${{ matrix.region }}
+
+  syntax-check-ROG:
+    name: Syntax Check - ${{ matrix.product }} - ${{ matrix.region }}
+    strategy:
+      matrix:
+        product: [ 'ROG' ]
+        region: [ 'BR', 'CN', 'CZ', 'DA', 'DE', 'EN', 'ES', 'FI', 'FR', 'HU', 'IT', 'JP', 'KR', 'MS', 'NL', 'NO', 'PL', 'RO', 'RU', 'SL', 'SV', 'TH', 'TR', 'TW', 'UK' ]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: release/src/router/www
+
+      - name: Get branch name
+        run: echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Checkout github_action files
+        uses: actions/checkout@v4
+        with:
+          repository: ASUS-WL/github-action-web
+          ref: main
+          path: github_action_files
+          token: ${{ secrets.GA_PAT }}
+
+      - name: Copy github_action files
+        run: cp github_action_files/* ./release/src/router/www/
+
+      - name: Cache Node.js modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Install dependencies
+        working-directory: ./release/src/router/www
+        run: npm install
+
+      - name: Run syntax check
+        working-directory: ./release/src/router/www
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: ${{ env.BRANCH_NAME }}
+          PRODUCT: ${{ matrix.product }}
+        run: npm run check-pr-lang-${{ matrix.region }}
+
+  syntax-check-TUF:
+    name: Syntax Check - ${{ matrix.product }} - ${{ matrix.region }}
+    strategy:
+      matrix:
+        product: [ 'TUF' ]
+        region: [ 'BR', 'CN', 'CZ', 'DA', 'DE', 'EN', 'ES', 'FI', 'FR', 'HU', 'IT', 'JP', 'KR', 'MS', 'NL', 'NO', 'PL', 'RO', 'RU', 'SL', 'SV', 'TH', 'TR', 'TW', 'UK' ]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: release/src/router/www
+
+      - name: Get branch name
+        run: echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Checkout github_action files
+        uses: actions/checkout@v4
+        with:
+          repository: ASUS-WL/github-action-web
+          ref: main
+          path: github_action_files
+          token: ${{ secrets.GA_PAT }}
+
+      - name: Copy github_action files
+        run: cp github_action_files/* ./release/src/router/www/
+
+      - name: Cache Node.js modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Install dependencies
+        working-directory: ./release/src/router/www
+        run: npm install
+
+      - name: Run syntax check
+        working-directory: ./release/src/router/www
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: ${{ env.BRANCH_NAME }}
+          PRODUCT: ${{ matrix.product }}
+        run: npm run check-pr-lang-${{ matrix.region }}
+
+  syntax-check-BUSINESS:
+    name: Syntax Check - ${{ matrix.product }} - ${{ matrix.region }}
+    strategy:
+      matrix:
+        product: [ 'BUSINESS' ]
+        region: [ 'BR', 'CN', 'CZ', 'DA', 'DE', 'EN', 'ES', 'FI', 'FR', 'HU', 'IT', 'JP', 'KR', 'MS', 'NL', 'NO', 'PL', 'RO', 'RU', 'SL', 'SV', 'TH', 'TR', 'TW', 'UK' ]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: release/src/router/www
+
+      - name: Get branch name
+        run: echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Checkout github_action files
+        uses: actions/checkout@v4
+        with:
+          repository: ASUS-WL/github-action-web
+          ref: main
+          path: github_action_files
+          token: ${{ secrets.GA_PAT }}
+
+      - name: Copy github_action files
+        run: cp github_action_files/* ./release/src/router/www/
+
+      - name: Cache Node.js modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-
+
+      - name: Install dependencies
+        working-directory: ./release/src/router/www
+        run: npm install
+
+      - name: Run syntax check
+        working-directory: ./release/src/router/www
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: ${{ env.BRANCH_NAME }}
+          PRODUCT: ${{ matrix.product }}
+        run: npm run check-pr-lang-${{ matrix.region }}

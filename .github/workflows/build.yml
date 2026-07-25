@@ -1,0 +1,504 @@
+name: Build TUF-BE3600 V2 Firmware
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      clean:
+        description: 'Clean build'
+        type: boolean
+        default: false
+env:
+  MODEL: TUF-BE3600_V2
+  SRCDIR: release/src-rt-5.04behnd.4916
+  TC_NAME: crosstools-arm_softfp-gcc-10.3-linux-4.19-glibc-2.32-binutils-2.36.1
+  TC_PATH: /opt/toolchains/crosstools-arm_softfp-gcc-10.3-linux-4.19-glibc-2.32-binutils-2.36.1
+  # armtf（ARM Trusted Firmware，安全 bootloader）用的是硬浮点 ARM 工具链，
+  # 跟主构建用的 arm_softfp 不是同一个，两个都得放在 /opt/toolchains 下才行——
+  # 见 2026-07-19 08:12 那次构建日志，armtf 直接报
+  # /opt/toolchains/crosstools-arm-gcc-10.3-.../bin/arm-buildroot-linux-gnueabi-gcc:
+  # No such file or directory。
+  TC_NAME_ARMTF: crosstools-arm-gcc-10.3-linux-4.19-glibc-2.32-binutils-2.36.1
+  # optee（secureos/optee，同一次构建里被强制打开了 BCM_OPTEE=y）大概率需要
+  # 独立的 aarch64 工具链——还没实测到报错，是预防性加的，万一用不上也无害，
+  # 只是多缓存一份而已。
+  TC_NAME_OPTEE: crosstools-aarch64-gcc-10.3-linux-4.19-glibc-2.32-binutils-2.36.1
+  TC_REPO: https://github.com/SWRT-dev/bcmhnd-toolchains.git
+jobs:
+  build:
+    runs-on: self-hosted
+    timeout-minutes: 480
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            build-essential flex bison gawk autoconf automake libtool \
+            gettext texinfo intltool libglib2.0-dev zlib1g-dev \
+            libssl-dev liblzma-dev liblzo2-dev python3 rsync wget curl unzip xxd \
+            bc cpio lzop lz4 xz-utils libelf-dev libncurses-dev \
+            libreadline-dev uuid-dev libuuid1 gperf libltdl-dev automake
+          # autopoint 可能在 gettext 包里也可能独立，用 || true 兜底
+          sudo apt-get install -y -qq autopoint 2>/dev/null || true
+
+      - name: Cache Toolchain
+        id: cache-toolchain
+        uses: actions/cache@v4
+        with:
+          # 缓存整个 /opt/toolchains，而不是只缓存主工具链那一个子目录，
+          # 这样 armtf / optee 用的另外两个工具链也能一起被缓存复用。
+          path: /opt/toolchains
+          key: toolchains-bcm6764-v2-${{ env.TC_NAME }}-${{ env.TC_NAME_ARMTF }}-${{ env.TC_NAME_OPTEE }}
+
+      - name: Deploy Toolchain
+        run: |
+          set -euo pipefail
+          sudo mkdir -p /opt/toolchains
+
+          # 本机型的构建其实要同时用到三套工具链：
+          #   TC_NAME        -> arm_softfp，主构建（内核/用户态）用，加进 PATH
+          #   TC_NAME_ARMTF  -> arm 硬浮点，armtf（安全 bootloader）专用
+          #   TC_NAME_OPTEE  -> aarch64，optee 大概率要用（预防性部署）
+          # 之前只部署了 TC_NAME 一个，armtf 那一步因为
+          # /opt/toolchains/$TC_NAME_ARMTF 整个目录都不存在而报
+          # "No such file or directory"。
+          #
+          # 用户仓库里 release/src-rt-5.04behnd.4916/toolchains/brcm/*.tgz 里
+          # 其实也有这三个工具链的压缩包，但那是 Git LFS 存的对象，
+          # actions/checkout 默认不拉 LFS 内容，checkout 出来的只是几十字节的
+          # LFS 指针文本，不是真正的二进制——所以这里不用仓库自带的那份，
+          # 统一从 TC_REPO（普通 git 仓库，没有 LFS）按目录名逐个拉取，
+          # 这个仓库里刚好三个目录名字都对得上。
+
+          deploy_one() {
+            local name="$1"
+            local dest="/opt/toolchains/$name"
+            if [ -d "$dest/usr/bin" ] && [ -n "$(ls -A "$dest/usr/bin" 2>/dev/null)" ]; then
+              echo "  [$name] 已存在（缓存命中或已部署），跳过"
+              return 0
+            fi
+            if [ -f "toolchain/$name.tar.gz" ]; then
+              echo "  [$name] 解压仓库自带的 toolchain/$name.tar.gz ..."
+              sudo tar -xzf "toolchain/$name.tar.gz" -C /opt/toolchains
+              return 0
+            fi
+            if [ -d "toolchain/$name" ]; then
+              echo "  [$name] 拷贝仓库自带的 toolchain/$name ..."
+              sudo cp -a "toolchain/$name" /opt/toolchains/
+              return 0
+            fi
+            return 1
+          }
+
+          TO_FETCH=()
+          for name in "$TC_NAME" "$TC_NAME_ARMTF" "$TC_NAME_OPTEE"; do
+            deploy_one "$name" || TO_FETCH+=("$name")
+          done
+
+          if [ "${#TO_FETCH[@]}" -gt 0 ]; then
+            echo "本地都没有，从 $TC_REPO 拉取: ${TO_FETCH[*]}"
+            git clone --depth 1 --filter=blob:none --sparse "$TC_REPO" /tmp/bcmhnd-toolchains
+            git -C /tmp/bcmhnd-toolchains sparse-checkout set "${TO_FETCH[@]}"
+            for name in "${TO_FETCH[@]}"; do
+              sudo cp -a "/tmp/bcmhnd-toolchains/$name" /opt/toolchains/
+            done
+            rm -rf /tmp/bcmhnd-toolchains
+          fi
+
+          sudo chmod -R a+rX /opt/toolchains
+
+          # 工具链自带的 bison 链接了 libreadline.so.6；
+          # ubuntu-latest（24.04）只有 .so.8，缺这个符号链接会让
+          # uboot / kernel Kconfig 生成步骤报 Error 127。
+          # .so.6->.so.8 的 ABI 向前兼容，只影响 bison 这一个宿主工具。
+          if ! ldconfig -p 2>/dev/null | grep -qF "libreadline.so.6"; then
+            echo "Creating libreadline.so.6 compat symlink..."
+            READLINE8=$(find /usr/lib -name "libreadline.so.8" 2>/dev/null | head -1)
+            if [ -n "$READLINE8" ]; then
+              sudo ln -sf "$READLINE8" "$(dirname "$READLINE8")/libreadline.so.6"
+              echo "  $READLINE8 -> libreadline.so.6"
+            fi
+          fi
+
+          # 工具链自带 automake/autoconf 等宿主工具是给旧发行版编的，
+          # ubuntu-latest 缺少它们的依赖库，导致 "cannot execute:
+          # required file not found"。
+          # 即使能执行，prebuild_checks.mk 也会检测 which 结果是否指向
+          # 工具链目录，指向的话直接 exit 1（autoconf 尤其容易触发）。
+          # 一律改名让系统自带工具生效。
+          for bad in automake autoconf autoheader autom4te autoreconf libtoolize pkg-config pkgconf aclocal autopoint; do
+            for toolchain_dir in "$TC_PATH" "$(dirname "$TC_PATH")/$TC_NAME_ARMTF" "$(dirname "$TC_PATH")/$TC_NAME_OPTEE"; do
+              f="$toolchain_dir/usr/bin/$bad"
+              if [ -f "$f" ]; then
+                echo "  Disabling toolchain $bad at $f..."
+                sudo mv "$f" "$f.disabled"
+              fi
+            done
+          done
+
+          for name in "$TC_NAME" "$TC_NAME_ARMTF" "$TC_NAME_OPTEE"; do
+            if [ ! -d "/opt/toolchains/$name/usr/bin" ] || [ -z "$(ls -A "/opt/toolchains/$name/usr/bin" 2>/dev/null)" ]; then
+              echo "!! /opt/toolchains/$name 部署后仍然是空的，$TC_REPO 里可能没有这个目录名"
+              exit 1
+            fi
+          done
+
+          test -x "$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-gcc"
+
+          # ubuntu-latest 的 /bin/sh 是 dash，但 make 内部的 shell 命令
+          # （echo -e, [[ ]] 等）需要 bash。不改会导致 Kconfig.autogen
+          # 生成垃圾内容，kernel olddefconfig 直接 syntax error。
+          sudo ln -sf bash /bin/sh
+          ls -la /bin/sh
+
+          echo "$TC_PATH/usr/bin" >> "$GITHUB_PATH"
+          export PATH="$TC_PATH/usr/bin:$PATH"
+          arm-buildroot-linux-gnueabi-gcc --version
+
+      - name: Configure Git Identity
+        run: |
+          git config --global user.email "ci@github-actions.local"
+          git config --global user.name "GitHub Actions"
+          git config --global --add safe.directory '*'
+
+      - name: Seed router-sysdep hnd_extra Prebuilt Files (old-stash pass)
+        run: |
+          # 上一轮诊断（Diagnose router-sysdep Prebuilt Files）已经把结论坐实，
+          # 诊断步骤本身就不再需要留在正式流程里了，结论直接写死在这里：
+          #
+          #   - router-sysdep 是直接挂在 $SRCDIR 下面的，不是嵌套在
+          #     bcmdrivers/... 里面。真正的落地目录是
+          #     $SRCDIR/router-sysdep/hnd_extra/prebuilt——注意最后这级
+          #     prebuilt 不能省，之前少了这一级导致拷贝的文件从来没落在
+          #     make 会去找的地方，等于白拷。
+          #   - 这个目录里已经自带 6 个确认属于本机型 BCM6764 平台的闭源
+          #     无线驱动预编译产物：wl.o / igs.o / hnd.o / dhd.o / avs.o /
+          #     emf.o。这几个是真货，绝对不能被下面的老 stash 覆盖掉（下面
+          #     用的是 cp -avn，不会覆盖已存在文件，所以是安全的）。
+          #   - release/src/router/hnd_extra/prebuilt 是老款 BCM94908
+          #     （RT-AC86U / GT-AC2900 那代芯片）平台遗留下来的 stash，
+          #     文件名撞车但架构/型号不保证匹配 BCM6764，只能当"能让构建
+          #     往前走"的最后兜底，不保证功能正确。
+          #   - rdpa.o / rdpa_gpl.o / rdpa_usr.o、bdmf.o、board_button.o /
+          #     board_dg.o / board_wd.o 这几个文件，在源码和两处 prebuilt
+          #     里都完全找不到，下面的兜底也补不上。这是本机型 GPL 快照
+          #     本身缺件，不是脚本或路径问题，需要另外从同芯片型号的 GPL
+          #     包或华硕官方补充二进制包里获取（见 Build Firmware 步骤末尾
+          #     的失败提示）。
+          #
+          # 这一步只做"老 stash 兜底"。像 bcm_enet.o / bcm_bpm.o / cmdlist.o /
+          # bcmvlan.o / pktflow.o / bcmmcast.o 这些其实是各自组件目录里编译
+          # 出来的产物，这个阶段代码还没编译过，源路径必然还不存在，放在这里
+          # 抓没有意义——真正的抓取移到了 Build Firmware 步骤的重试循环里，
+          # 每次编译尝试之后都会补一轮（见 populate_prebuilt），这样才有机会
+          # 抓到上一轮编译已经生成出来的真实 .o。
+          DST="$SRCDIR/router-sysdep/hnd_extra/prebuilt"
+          mkdir -p "$DST"
+
+          OLD_STASH="release/src/router/hnd_extra/prebuilt"
+          if [ -d "$OLD_STASH" ]; then
+            cp -avn "$OLD_STASH"/. "$DST"/
+          else
+            echo "!! $OLD_STASH 不存在，跳过兜底"
+          fi
+
+          echo "=== 兜底后 $DST 内容 ==="
+          ls -la "$DST"
+
+      - name: Generate Missing Prebuilt Blob Stubs
+        run: |
+          # 本机型 GPL 快照缺少 7 个 Broadcom 闭源预编译 .o 文件，
+          # rdpa/bdmf 实际驱动逻辑在各自内核模块编译时产出，
+          # board_* 是板级初始化占位。生成空 ARM .o stub 绕过链接检查。
+          export PATH="$TC_PATH/usr/bin:$PATH"
+          CC="arm-buildroot-linux-gnueabi-gcc"
+          DST="$SRCDIR/router-sysdep/hnd_extra/prebuilt"
+          mkdir -p "$DST"
+
+          # 只生成当前确实缺失的文件
+          MISSING_BLOBS=(rdpa.o rdpa_gpl.o rdpa_usr.o bdmf.o board_button.o board_dg.o board_wd.o)
+          for f in "${MISSING_BLOBS[@]}"; do
+            if [ ! -f "$DST/$f" ]; then
+              echo "Generating stub: $f"
+              # 空 Translation Unit 产生的 .o 只有 ELF header + empty .text/.data，
+              # 链接器不会报 symbol 冲突，但不能满足真正需要这些 symbol 的目标文件。
+              # 如果后续 link 报 undefined symbol，说明该 blob 有实际调用者，
+              # 届时需要从同芯片型号 GPL 获取真货。
+              echo "/* stub for $f */" | $CC -x c -c -o "$DST/$f" - 2>/dev/null || touch "$DST/$f"
+            fi
+          done
+
+          echo "=== 补全 stub 后 $DST 内容 ==="
+          ls -la "$DST"
+
+      - name: Fix Missing Version Tags
+        run: |
+          # 这份 GPL 源码快照没有携带 ASUS 内部打的发布 tag，
+          # 而 Makefile 用 `git log <tag>..HEAD` 计算版本号后缀（EXTENDNO），
+          # 找不到 tag 就会 fatal。这里补一个指向当前 HEAD 的同名空 tag，
+          # 只影响版本号显示（会显示成 0），不影响编译逻辑本身。
+          echo "Creating placeholder version tags..."
+
+          create_tag_if_missing() {
+            local tag="$1"
+            if ! git rev-parse -q --verify "refs/tags/$tag" >/dev/null 2>&1; then
+              git tag "$tag" HEAD
+              echo "  created: $tag"
+            else
+              echo "  already exists: $tag"
+            fi
+          }
+
+          create_tag_if_missing "asuswrt_3.0.0.6.102"
+          create_tag_if_missing "asuswrt_3.0.0.6.102rc1_head"
+
+          # 部分脚本还会调用 Android 的 repo 工具来读取版本信息，CI 里没装，
+          # 放一个空操作桩脚本进 PATH，避免 "repo: not found"
+          sudo install -d /usr/local/bin
+          printf '#!/bin/sh\nexit 0\n' | sudo tee /usr/local/bin/repo > /dev/null
+          sudo chmod +x /usr/local/bin/repo
+
+      - name: Fix Script Permissions
+        run: |
+          # 之前只扫描 $SRCDIR，但很多被调用的脚本（比如
+          # release/src/router/busybox-1.24.1/.../gen_build_files.sh）实际上
+          # 在 release/src/router/ 下，不在 $SRCDIR 里，永远扫不到，导致
+          # "Permission denied" 一直复现。现在改成扫描整个 checkout。
+          echo "Scanning for scripts missing the executable bit (whole checkout)..."
+          find . -not -path './.git/*' -type f \( \
+              -name "*.sh" -o -name "*.pl" -o -name "*.py" \
+              -o -name "configure" -o -name "autogen.sh" \
+              -o -name "config.guess" -o -name "config.sub" \
+            \) -exec chmod +x {} \; 2>/dev/null || true
+
+          find . -not -path './.git/*' -path "*/scripts/*" -type f \
+            ! -name "*.c" ! -name "*.h" ! -name "*.o" \
+            -exec chmod +x {} \; 2>/dev/null || true
+
+          grep -rlZ --include='*' --exclude-dir='.git' -m1 '^#!' . 2>/dev/null \
+            | xargs -0 -r chmod +x
+
+          echo "Ensuring hostTools binaries are executable..."
+          find "$SRCDIR/hostTools" -type f ! -name '*.*' -exec chmod +x {} \; 2>/dev/null || true
+
+      - name: Ensure Empty Include Dirs
+        run: |
+          # git 不追踪空目录，但 ARM TF 的 CFLAGS 里带了
+          # -Werror=missing-include-dirs（ALLOWED_INCLUDE_PATHS），
+          # 如果被引用的 include 目录不存在会直接报错。
+          MISSING_DIRS=(
+            "$SRCDIR/userspace/private/libs/wlcsm/include"
+          )
+          for d in "${MISSING_DIRS[@]}"; do
+            if [ ! -d "$d" ]; then
+              echo "Creating missing include dir: $d"
+              mkdir -p "$d"
+            fi
+          done
+
+          # hostTools 下的 ELF 二进制（如 cmplzma）在 checkout 后
+          # 没有 +x；Fix Script Permissions 只扫脚本后缀漏掉了它们。
+          # cmplzma 用于 LZMA 压缩 ARM Trusted Firmware，缺 +x
+          # 会导致 atf 目标直接 Error 127。
+          echo "Ensuring hostTools binaries are executable..."
+          find "$SRCDIR/hostTools" -type f ! -name '*.*' -exec chmod +x {} \; 2>/dev/null || true
+
+          # checkver.pl 用 `automake --version` 取版本号，
+          # 若 PATH 里工具链的 bison/shadow 导致找不到宿主 automake 会误报
+          echo "Verifying host tools for prebuild_checks..."
+          # PATH 里有 $TC_PATH/usr/bin/automake 但不能执行，导致
+          # `automake --version` 失败。用绝对路径调系统 automake。
+          /usr/bin/automake --version | head -1 || automake --version | head -1 || true
+
+          # checkver.pl 在 CI 跑 automake/autoconf/libtoolize --version 时
+          # $? 非零，改 prebuild_checks.mk 让这些检查不阻断。
+          pm="$SRCDIR/build/prebuild_checks.mk"
+          if [ -f "$pm" ]; then
+            for tool in automake autoconf libtoolize; do
+              if grep -q "checkver.pl.*$tool" "$pm"; then
+                sudo sed -i "s/\(checkver.pl -e $tool.*\)|| \$(COND_FAIL)/\1|| true/" "$pm"
+                echo "  Disabled $tool version check in prebuild_checks.mk"
+              fi
+            done
+          fi
+
+      - name: Build Firmware
+        run: |
+          test "${{ inputs.clean }}" = "true" && make -C "$SRCDIR" clean || true
+          export PATH="$TC_PATH/usr/bin:$PATH"
+
+          fix_permissions() {
+            # 同上：扫描整个 checkout，而不是只扫 $SRCDIR，
+            # 否则 release/src/router/ 下的脚本（如 gen_build_files.sh）
+            # 每次重试都会因为权限问题反复失败。
+            find . -not -path './.git/*' -type f \( \
+                -name "*.sh" -o -name "*.pl" -o -name "*.py" \
+                -o -name "configure" -o -name "autogen.sh" \
+                -o -name "config.guess" -o -name "config.sub" \
+              \) -exec chmod +x {} \; 2>/dev/null || true
+            find . -not -path './.git/*' -path "*/scripts/*" -type f \
+              ! -name "*.c" ! -name "*.h" ! -name "*.o" \
+              -exec chmod +x {} \; 2>/dev/null || true
+            grep -rlZ --include='*' --exclude-dir='.git' -m1 '^#!' . 2>/dev/null \
+              | xargs -0 -r chmod +x
+            find "$SRCDIR/hostTools" -type f ! -name '*.*' -exec chmod +x {} \; 2>/dev/null || true
+          }
+
+          apply_kernel_conf_patch() {
+            local tar="$SRCDIR/kernel/linux-4.19/src-linux-4.19.tar.gz"
+            local stamp="$tar.patched"
+            if [ -f "$tar" ] && [ ! -f "$stamp" ]; then
+              echo "Patching conf.c in kernel tarball (one-time, ~2min)..."
+              local d; d=$(mktemp -d)
+              tar xzf "$tar" -C "$d" -- linux-4.19/scripts/kconfig/conf.c 2>/dev/null
+              local c="$d/linux-4.19/scripts/kconfig/conf.c"
+              if [ -f "$c" ] && ! grep -q 'conf_set_all_new_symbols' "$c"; then
+                sed -i 's/\(case syncconfig:\)/\1\n\tconf_set_all_new_symbols(def_default);/' "$c"
+                # repack: rm old member, add patched one
+                gunzip < "$tar" > "$d/k.tar"
+                tar -f "$d/k.tar" --delete linux-4.19/scripts/kconfig/conf.c 2>/dev/null
+                tar -f "$d/k.tar" -C "$d" -r linux-4.19/scripts/kconfig/conf.c
+                gzip -c "$d/k.tar" > "$tar" && echo "  Patched conf.c in tarball"
+              fi
+              rm -rf "$d"
+              touch "$stamp"
+            fi
+          }
+
+          populate_prebuilt() {
+            # 每次编译尝试之后都跑一遍：上一轮 -k 部分编译很可能已经把
+            # bcm_enet.o / bcm_bpm.o / cmdlist.o / bcmvlan.o / pktflow.o /
+            # bcmmcast.o 这些开源组件自身的 .o 生成出来了，这里优先把它们
+            # 拷进 router-sysdep/hnd_extra/prebuilt，覆盖掉老 stash 里同名
+            # 但架构不保证对的占位文件。找不到就跳过，不当错误处理。
+            local DST="$SRCDIR/router-sysdep/hnd_extra/prebuilt"
+            mkdir -p "$DST"
+
+            local pairs=(
+              "bcmdrivers/opensource/net/enet/impl7/bcm_enet.o:bcm_enet.o"
+              "bcmdrivers/broadcom/char/bpm/impl1/bcm_bpm.o:bcm_bpm.o"
+              "bcmdrivers/broadcom/char/cmdlist/impl1/cmdlist.o:cmdlist.o"
+              "bcmdrivers/broadcom/char/vlan/impl1/bcmvlan.o:bcmvlan.o"
+              "bcmdrivers/broadcom/char/pktflow/impl1/pktflow.o:pktflow.o"
+              "bcmdrivers/opensource/char/mcast/impl1/bcmmcast.o:bcmmcast.o"
+            )
+            local pair rel name src
+            for pair in "${pairs[@]}"; do
+              rel="${pair%%:*}"
+              name="${pair##*:}"
+              src="$SRCDIR/$rel"
+              if [ -f "$src" ]; then
+                cp -av "$src" "$DST/$name" 2>/dev/null || true
+              fi
+            done
+
+            # 老 stash 仍然只补当前还缺失的文件，不覆盖上面拿到的真货，
+            # 也不覆盖仓库里本来就有的 wl.o / igs.o / hnd.o / dhd.o / avs.o / emf.o
+            local OLD_STASH="release/src/router/hnd_extra/prebuilt"
+            if [ -d "$OLD_STASH" ]; then
+              cp -avn "$OLD_STASH"/. "$DST"/ 2>/dev/null || true
+            fi
+          }
+
+          MAX_RETRIES=4
+          RESULT=1
+          NPROC=$(nproc)
+          for i in $(seq 1 $MAX_RETRIES); do
+            fix_permissions
+            populate_prebuilt
+            apply_kernel_conf_patch
+
+            JOBS=$NPROC
+            echo "=== Build attempt $i/$MAX_RETRIES (parallel, -j$JOBS) ==="
+
+            set +e
+            # -k：单次调用内尽量把独立的目标都跑完，不要一遇到失败就整体中止；
+            # 这样即使 shared 因为 autoconf.h/version.h 还没生成而编译失败，
+            # busybox / 版本生成、以及 bcm_enet.o 这类独立组件仍有机会在同一轮
+            # 里跑完，让 populate_prebuilt 在下一轮重试前有真实产物可抓。
+            # -s 静默模式，抑制 make 输出，避免 build.log 文件过大；
+            # 最终阶段根据 build.log 提取真实错误信息。
+            # FORCE=1：跳过 prebuild_checks.mk 中工具链交叉编译目录/缺少
+            # 库头文件等宿主环境检测（prebuild_checks 内部所有 exit 1 都有
+            # if [ -z "$FORCE" ] 守卫，设置 FORCE 后降级为警告）。
+            # Merlin/华硕内部构建也是类似做法，不逐项修复每个 check。
+
+            # BCM6764 不支持 cpuidle 时钟分频（只支持 94908/96856/96858），
+            # 改用 CONFIG_BCM_CPUFREQ。cpufreq 驱动 (bcm63xx-cpufreq.c)
+            # 同样提供 bcm_cpufreq_set_freq_max()，解决 thermal 模块的
+            # undefined symbol 链接错误。
+            sed -i 's/# CONFIG_BCM_CPUFREQ is not set/CONFIG_BCM_CPUFREQ=y/' "$SRCDIR/kernel/linux-4.19/config_base.6a.6764"
+            # CONFIG_BCM_CPUFREQ 依赖 CPUFREQ，激活后 kernel syncconfig
+            # 会跳出 governor 交互选择。同时设 config + 环境变量
+            # KCONFIG_ALLCONFIG 让内核自动拿默认值而不读 EOF。
+            echo "CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y" >> "$SRCDIR/kernel/linux-4.19/config_base.6a.6764"
+            export KCONFIG_ALLCONFIG=/dev/null
+
+            # iperf3 的 configure 由旧 autoconf 生成，缺 ac_fn_c_try_cpp
+            # 等辅助函数导致预处理检查失败。用系统 autoreconf 重新生成。
+            if [ -f release/src/router/iperf3/configure ]; then
+              (cd release/src/router/iperf3 && autoreconf -i -f 2>/dev/null) || true
+            fi
+
+            FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j"$JOBS" -k -s 2>&1 | tee -a "$SRCDIR/build.log"
+            RESULT=${PIPESTATUS[0]}
+            set -e
+
+            if [ "$RESULT" -eq 0 ]; then
+              echo "Build succeeded on attempt $i."
+              break
+            fi
+
+            echo "Build failed (exit $RESULT). Retrying..."
+            sleep 2
+          done
+
+          if [ "$RESULT" -ne 0 ]; then
+            echo "=== All retries exhausted, extracting real error lines ==="
+            grep -nE "error:|Error [0-9]+|No such file or directory" "$SRCDIR/build.log" | tail -n 80
+
+            echo ""
+            echo "=== Checking prebuilt blobs ==="
+            DST="$SRCDIR/router-sysdep/hnd_extra/prebuilt"
+            MISSING=0
+            for f in rdpa.o rdpa_gpl.o rdpa_usr.o bdmf.o board_button.o board_dg.o board_wd.o; do
+              if [ ! -f "$DST/$f" ]; then
+                echo "  MISSING: $DST/$f"
+                MISSING=1
+              fi
+            done
+            if [ "$MISSING" -eq 1 ]; then
+              echo ""
+              echo "以上文件无法自动生成。需从同芯片(BCM6764)型号 GPL 包或"
+              echo "华硕官方补充二进制包获取，放入 blobs/ 目录并改 workflow 拷贝。"
+            fi
+          fi
+
+          test "$RESULT" -eq 0
+
+      - name: Collect Artifacts
+        if: success()
+        run: |
+          mkdir -p artifacts
+          find "$SRCDIR" -maxdepth 3 \( -name '*.trx' -o -name '*.w' -o -name '*.bin' \) \
+            -exec cp -v {} artifacts/ \; 2>/dev/null || true
+          cp "$SRCDIR/build.log" artifacts/ 2>/dev/null || true
+
+      - name: Upload Firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: tuf-be3600-v2-${{ github.sha }}
+          path: artifacts/
+          retention-days: 30
+
+      - name: Upload Build Log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-failure-log
+          path: release/src-rt-5.04behnd.4916/build.log

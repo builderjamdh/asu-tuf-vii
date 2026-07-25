@@ -1,0 +1,55 @@
+--- # YAML format
+reference: '$File: //depot/CommEngine/release/REL_504L04A/patch.version $'
+version: '5'
+release: '04'
+extraversion: '04p3'
+
+platforms_in_use:
+# one row per platform starting with hiphen+space e.g. - 63138
+- to fill
+
+patches:
+# one row per patch starting with hiphen+space e.g.:
+- {csp: CSxx, ref: RNxx, chg: CLxx} # Mandatory Comment
+
+- {csp: CS00012366280, ref: SWBCACPE-60592, chg: CL523100} # [PHY] Firmware update
+- {csp: CS00012375343, ref: SWBCACPE-56762, chg: CL524333} # [6765] [u-boot] Add DDR3 support. Update to DPFE_FW_3.144.0.0 M3 RC1 release.
+- {csp: CS00012375343, ref: SWBCACPE-56762, chg: CL524335} # [6765] [u-boot] Add DDR3 support. Update to DPFE_FW_3.148.0.0.
+- {csp: CS00012375343, ref: SWBCACPE-56762, chg: CL524337} # [6765] DDR4 DPFE library update. Upgrade to DPFE FW version 3.159.0.0
+- {csp: CS00012381594, ref: SWBCACPE-     , chg:         } # JIRA:BCAWLAN-272528 RB:212523 - [MLO] console is flooding
+- {csp: CS00012386064, ref: SWBCACPE-     , chg:         } # Merge RB:212231 to add mac kde in eapol m2 and m4 for pseudo mlo; Merge RB:207965, [MLO][WET] fixing issue that not able to connect to MTK sing								 le link or dual link MLO Root AP, CS00012386064; Merge RB:208742, [MLO][STA] Add a new MLC command for copying assoc.
+- {csp: CS00012372432, ref: SWBCACPE-60260, chg: 498857} #  [Crossbow] LLC/SNAP Header insertion for WLAN NIC Transmission
+- {csp: CS00012372432, ref: SWBCACPE-60329, chg: 498862} #  [Crossbow] Attach FWQ MPM Buffers directly to SKBs
+- {csp: CS00012372432, ref: SWBCACPE-60324, chg: 498866} #  wl_spc: Improvements and design change.
+- {csp: CS00012372432, ref: SWBCACPE-60403, chg: 498871} #  spc: initialize spc fields on clone.
+- {csp: CS00012372432, ref: SWBCACPE-60377, chg: 498872} #  [DoX] __rdp_drv_dhd_cpu_tx_send_message,1181: DHD_MSG_TYPE_FLOW_RING_CACHE_FLUSH message failed
+- {csp: CS00012372432, ref: SWBCACPE-60330, chg: 498874} #  [6765]dol0: Discard TxS: req_id[0x0], pkt[0x0000000000000000] after edpd up
+- {csp: CS00012372432, ref: SWBCACPE-60260, chg: 498876} #  [Crossbow] LLC/SNAP Header insertion for WLAN NIC Transmission
+- {csp: CS00012372432, ref: SWBCACPE-60383, chg: 498879} #   check clean fails for 64bit eap build profile
+- {csp: CS00012372432, ref: SWBCACPE-60455, chg: 498881} #  [DoX] Radio Re-Initialization causes memory leakage
+- {csp: CS00012372432, ref: SWBCACPE-60511, chg: 498882} #  [DoX] crossbow_fw_dhd_tx_post_cpu_message_processing,1665] ERROR: level = 15903
+- {csp: CS00012372432, ref: SWBCACPE-60327, chg: 498883} #  CROSSBOW needs crash log
+- {csp: CS00012372432, ref: SWBCACPE-60417, chg: 498897} #  CROSSBOW: Recycling packets immediately to bpm when crossbow sees more than rxq_max_pkts packets from WLAN
+- {csp: CS00012372432, ref: SWBCACPE-60493, chg: 498900} #  [DoX] crossbow_wlan_tx_pktlist_add_fkb() may free FKBs as SKBs, causing buffer corruption
+- {csp: CS00012372432, ref: SWBCACPE-60511, chg: 498915} #  [DoX] crossbow_fw_dhd_tx_post_cpu_message_processing,1665] ERROR: level = 15903
+- {csp: CS00012329535, ref: SWBCACPE-59921, chg: 499340} # [BQ16][WAR] add MPM buffer allocation retry for RDD RxPost init failure
+- {csp: CS00012372432, ref: SWBCACPE-61340, chg: 499671} # [Asus]{Case#CS00012345839}[TUF-BE3600] IPSec throughput issue
+- {csp: CS00012372432, ref: SWBCACPE-61890, chg: 504654} #  6764, 6765 and 6766 CPU cooling issue
+- {csp: CS00012372432, ref: SWBCACPE-61941, chg: 505601} #  update BCM6766/6765/6764 PMC firmware and BCM thermal driver
+- {csp: CS00012372432, ref: SWBCACPE-62305, chg: 507844} # [54904][50904] Port link down cause other port link flipping
+- {csp: CS00012355898, ref: SWBCACPE-61627, chg: 514771} # [6765][IPsec offloading] IPsec offloading not working SVQ block disabled
+- {csp: CS00012355910, ref: SWBCACPE-62923, chg: 516996} # [IPsec] SPU US traffic received from WAN interface cannot be accelerated
+- {csp: CS00012372432, ref: SWBCACPE-57447, chg: 520116} #  bootup failed issue, 2 DUTs cannot boot up into uboot
+- {csp: CS00012372432, ref: SWBCACPE-63656, chg: 520119} # [dual image] unable to downgrade
+- {csp: CS00012372432, ref: SWBCACPE-61512, chg: 522044} #  spc: Better SPC aggregation for archer
+- {csp: CS00012328388, ref: SWBCACPE-54103, chg: 522209} # [ASUS] Bypass fcache for Wireguard traffic
+- {csp: CS00012372432, ref: SWBCACPE-49992, chg: 522220} # [IPv6] [NAT] Cannot forward ipv6 traffic if setting LAN address as ULA
+- {csp: CS00012372432, ref: SWBCACPE-58727, chg: 523100} # [50901E]100M link flapping when EEE is enabled
+- {csp: CS00012372432, ref: SWBCACPE-60708, chg: 523103} # [XGPHY][MDIO][BCM67XX/49XX/63XXX/6813] DTSI mdiosf2 block missing label
+- {csp: CS00012372432, ref: SWBCACPE-60898, chg: 523105} # [Serdes][BCM67XX/49XX/63XXX/6813] Third party XGPHY SGMII AN mode support
+- {csp: CS00012372432, ref: SWBCACPE-63776, chg: 524478} #  Support emmc oops.
+- {csp: CS00012372432, ref: SWBCACPE-59687, chg: 526246} #  Add ingress QoS support under crossbow
+- {csp: CS00012372432, ref: SWBCACPE-60742, chg: 526254} #  armtf: Core dump fails for external abort
+- {csp: CS00012372432, ref: SWBCACPE-62107, chg: 526265} # [uboot][63xx/67xx/49xx/6813][Serdes][XGPHY] data path failure with link down & up
+- {csp: CS00012346734, CS00012385541, CS00012372432, ref: SWBCACPE-64996, chg: CL532459} # WAR for MXIC parallel NAND, using 0xFF instead of 0x00 in the unuse field of uboot env to reduce write workload.
+- {csp: CS00012400528, ref: SWBCACPE-66199, chg: CL546205} # Router would have hundreds of read at Block 0~6 of flash during boot

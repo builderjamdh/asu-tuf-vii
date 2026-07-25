@@ -1,0 +1,50 @@
+name: PR C Keyword Check
+
+on:
+  pull_request:
+    branches: [ "asuswrt-router-3006", "asuswrt-router-3006-102-rc2", "asuswrt-router-3006-102-rc2_MLO", "asuswrt-router-3006-102-rc3", "asuswrt-router-3006-102-rc4", "asuswrt-router-3006-102-rc4_MLO" ]
+    paths:
+      - '**.c'
+      - '**.h'
+
+jobs:
+  check-keywords:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code with sparse checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            release/src/router/httpd
+            release/src/router/libwebapi
+            release/src/router/networkmapd
+            release/src/router/infosrv
+            release/src/router/awsiot
+            release/src/router/lighttpd-1.4.39
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4.0.2
+        with:
+          node-version: '20'
+
+      - name: Checkout github_action files
+        uses: actions/checkout@v4
+        with:
+          repository: ASUS-WL/github-action-web
+          ref: main
+          path: github_action_files
+          token: ${{ secrets.GA_PAT }}
+
+      - name: Copy github_action files
+        run: cp github_action_files/* ./release/src/router/
+
+      - name: Change directory
+        working-directory: ./release/src/router
+        run: npm install
+
+      - name: Run syntax check
+        working-directory: ./release/src/router
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run check-pr-c-keyword

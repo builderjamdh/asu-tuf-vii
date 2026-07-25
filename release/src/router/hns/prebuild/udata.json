@@ -1,0 +1,12 @@
+{
+	"configs" : { 
+		"base_path" : "/tmp/bwdpi/", 
+		"tmp_path" : "/tmp/bwdpi/", 
+		"sig_path" : "/tmp/bwdpi/", 
+		"nvram_path" : "/tmp/bwdpi/", 
+		"wrs_domain" : "hnssdk-asus.url.trendmicro.com", 
+		"trs_domain" : "hnssdk-asus-iot.url.trendmicro.com", 
+		"dc_domain"  : "spn-b-fbs1v.trendmicro.com", 
+		"dc_cert" : "ntdasus2014.cert" 
+	}
+}

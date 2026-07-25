@@ -1,0 +1,49 @@
+name: All JS Syntax Check
+
+on:
+  schedule:
+    - cron:  '0 21 * * 1,3,5'
+    
+  workflow_dispatch:
+
+jobs:
+  syntax-check:
+    name: JS Syntax Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: release/src/router/www
+
+      - name: Get branch name
+        id: get_branch
+        run: echo "BRANCH_NAME=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4.0.2
+        with:
+          node-version: '20'
+
+      - name: Checkout github_action files
+        uses: actions/checkout@v4
+        with:
+          repository: ASUS-WL/github-action-web
+          ref: main
+          path: github_action_files
+          token: ${{ secrets.GA_PAT }}
+
+      - name: Copy github_action files
+        run: cp github_action_files/* ./release/src/router/www/
+        
+      - name: Change directory
+        working-directory: ./release/src/router/www
+        run: npm install
+
+      - name: Run syntax check
+        working-directory: ./release/src/router/www
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: ${{ env.BRANCH_NAME }}
+        run: npm run check-all

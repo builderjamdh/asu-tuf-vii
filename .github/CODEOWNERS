@@ -1,0 +1,15 @@
+# Default owner for review
+buildtools/target.mak.3004 @Cheni44 @ChannerChiou
+/release/src/router/amas-utils/ @ASUS-WL/aimesh-reviewer
+/release/src/router/cfg_mnt/ @ASUS-WL/aimesh-reviewer
+/release/src/router/cfg_mnt/sysdeps/
+/release/src/router/libasuslog/ @ASUS-WL/aimesh-reviewer @ASUS-WL/sdn-reviewer
+/release/src/router/networkmap/ASUS_Discovery_for_find_cap.c @ASUS-WL/aimesh-reviewer
+/release/src/router/rc/amas/ @ASUS-WL/aimesh-reviewer
+/release/src/router/rc/amas_apg.c @ASUS-WL/sdn-reviewer
+/release/src/router/rc/amas_prelink.c @ASUS-WL/aimesh-reviewer
+/release/src/router/rc/amas_wgn.c @ASUS-WL/sdn-reviewer
+/release/src/router/shared/amas_apg_shared.* @ASUS-WL/sdn-reviewer
+/release/src/router/shared/amas_utils.c @ASUS-WL/aimesh-reviewer
+/release/src/router/shared/amas_wgn_shared.* @ASUS-WL/sdn-reviewer
+/release/src/router/shared/sysdeps/amas/ @ASUS-WL/aimesh-reviewer
