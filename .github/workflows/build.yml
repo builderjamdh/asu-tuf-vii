@@ -42,7 +42,7 @@ jobs:
             gettext texinfo intltool libglib2.0-dev zlib1g-dev \
             libssl-dev liblzma-dev liblzo2-dev python3 rsync wget curl unzip xxd \
             bc cpio lzop lz4 xz-utils libelf-dev libncurses-dev \
-            libreadline-dev uuid-dev libuuid1 gperf libltdl-dev automake
+            libreadline-dev uuid-dev libuuid1 gperf libltdl-dev automake cmake
           # autopoint 可能在 gettext 包里也可能独立，用 || true 兜底
           sudo apt-get install -y -qq autopoint 2>/dev/null || true
 
@@ -443,6 +443,10 @@ jobs:
             # KCONFIG_ALLCONFIG 让内核自动拿默认值而不读 EOF。
             echo "CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y" >> "$SRCDIR/kernel/linux-4.19/config_base.6a.6764"
             export KCONFIG_ALLCONFIG=/dev/null
+
+            # WSL2/自托管 runner: 上次构建可能残留 fs.build 目录，
+            # 构建系统的 rm (非 rm -r) 删不掉非空目录。
+            rm -rf "$SRCDIR/targets/96764GW/fs.build" 2>/dev/null || true
 
             # iperf3 的 configure 由旧 autoconf 生成，缺 ac_fn_c_try_cpp
             # 等辅助函数导致预处理检查失败。用系统 autoreconf 重新生成。
