@@ -422,23 +422,25 @@ jobs:
           fi
 
           # ==============================
-          # 阶段1：6核打地基 — 够快且依赖
-          # 冲突可控，失败的由阶段2收尾。
+          # 阶段1：全核开荒 (-j18) —— make -k
+          # 保证出错不中断，跑完所有目标。依赖
+          # 乱序的部分自然失败，阶段2补刀。
           # ==============================
           fix_permissions
           populate_prebuilt
           apply_kernel_conf_patch
-          echo "=== Phase 1/2: semi-parallel deps build (-j6) ==="
+          echo "=== Phase 1/2: full parallel (-j$(nproc)) ==="
           set +e
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j6 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j$(nproc) -k -s 2>&1 | tee -a "$SRCDIR/build.log"
           set -e
 
           # ==============================
-          # 阶段2：18核飙 —— 地基已打好
+          # 阶段2：补刀 —— 阶段1已经把依赖
+          # 库生成好了，本轮几乎零失败收尾。
           # ==============================
           fix_permissions
           populate_prebuilt
-          echo "=== Phase 2/2: full parallel (-j$(nproc)) ==="
+          echo "=== Phase 2/2: finishing (-j$(nproc)) ==="
           set +e
           FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j$(nproc) -k -s 2>&1 | tee -a "$SRCDIR/build.log"
           RESULT=${PIPESTATUS[0]}
