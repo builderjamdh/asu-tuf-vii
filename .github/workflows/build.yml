@@ -418,8 +418,13 @@ jobs:
             populate_prebuilt
             apply_kernel_conf_patch
 
-            JOBS=$NPROC
-            echo "=== Build attempt $i/$MAX_RETRIES (parallel, -j$JOBS) ==="
+            if [ "$i" -eq 1 ]; then
+              JOBS=1
+              echo "=== Build attempt $i/$MAX_RETRIES (sequential, generating deps) ==="
+            else
+              JOBS=$NPROC
+              echo "=== Build attempt $i/$MAX_RETRIES (parallel, -j$JOBS) ==="
+            fi
 
             set +e
             # -k：单次调用内尽量把独立的目标都跑完，不要一遇到失败就整体中止；
