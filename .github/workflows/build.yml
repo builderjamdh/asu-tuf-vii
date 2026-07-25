@@ -422,9 +422,9 @@ jobs:
           fi
 
           # ==============================
-          # 阶段1：全核开荒 (-j18) —— make -k
-          # 保证出错不中断，跑完所有目标。依赖
-          # 乱序的部分自然失败，阶段2补刀。
+          # 阶段1：18核全开 —— 能编的都编掉。
+          # 依赖乱序失败的非关键包记在 build.log，
+          # make -k 保证不中断继续跑。
           # ==============================
           fix_permissions
           populate_prebuilt
@@ -435,12 +435,13 @@ jobs:
           set -e
 
           # ==============================
-          # 阶段2：补刀 —— 阶段1已经把依赖
-          # 库生成好了，本轮几乎零失败收尾。
+          # 阶段2：精准补刀 —— make 天然跳过
+          # 已成功的目标，只编译阶段1失败的包。
+          # 此时依赖库已全就位，几乎零失败。
           # ==============================
           fix_permissions
           populate_prebuilt
-          echo "=== Phase 2/2: finishing (-j$(nproc)) ==="
+          echo "=== Phase 2/2: retry failed targets (-j$(nproc)) ==="
           set +e
           FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j$(nproc) -k -s 2>&1 | tee -a "$SRCDIR/build.log"
           RESULT=${PIPESTATUS[0]}
