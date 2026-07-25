@@ -419,11 +419,11 @@ jobs:
             apply_kernel_conf_patch
 
             if [ "$i" -eq 1 ]; then
-              JOBS=1
-              echo "=== Build attempt $i/$MAX_RETRIES (sequential, generating headers/deps) ==="
+              JOBS=4
+              echo "=== Build attempt $i/$MAX_RETRIES (semi-parallel -j$JOBS, building deps) ==="
             else
               JOBS=$NPROC
-              echo "=== Build attempt $i/$MAX_RETRIES (parallel, -j$JOBS) ==="
+              echo "=== Build attempt $i/$MAX_RETRIES (full parallel, -j$JOBS) ==="
             fi
 
             set +e
