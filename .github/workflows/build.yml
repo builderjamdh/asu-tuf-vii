@@ -410,40 +410,35 @@ jobs:
             fi
           }
 
-          # ---- 一次性配置 patch（不随阶段重复） ----
+          # ---- 一次性配置 ----
           sed -i 's/# CONFIG_BCM_CPUFREQ is not set/CONFIG_BCM_CPUFREQ=y/' "$SRCDIR/kernel/linux-4.19/config_base.6a.6764"
           echo "CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y" >> "$SRCDIR/kernel/linux-4.19/config_base.6a.6764"
           export KCONFIG_ALLCONFIG=/dev/null
-          export ac_cv_prog_cc_works=yes
-          export ac_cv_prog_cc_cross=yes
-          export ac_cv_prog_cxx_works=yes
-          export ac_cv_prog_cxx_cross=yes
+          export ac_cv_prog_cc_works=yes ac_cv_prog_cc_cross=yes
+          export ac_cv_prog_cxx_works=yes ac_cv_prog_cxx_cross=yes
           rm -rf "$SRCDIR/targets/96764GW/fs.build" 2>/dev/null || true
           if [ -f release/src/router/iperf3/configure ]; then
             (cd release/src/router/iperf3 && autoreconf -i -f 2>/dev/null) || true
           fi
 
           # ==============================
-          # 阶段1：单线程打地基 —— 生成所有
-          # 依赖库、头文件，确保时序正确。
+          # 阶段1：6核打地基 — 够快且依赖
+          # 冲突可控，失败的由阶段2收尾。
           # ==============================
           fix_permissions
           populate_prebuilt
           apply_kernel_conf_patch
-          echo "=== Phase 1/2: sequential deps build (-j1) ==="
+          echo "=== Phase 1/2: semi-parallel deps build (-j6) ==="
           set +e
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j1 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
-          R1=${PIPESTATUS[0]}
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j6 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
           set -e
-          echo "Phase 1 exit code: $R1"
 
           # ==============================
-          # 阶段2：全核飙收尾 —— 地基打好后
-          # 18核并处理第一阶段未完成的部分。
+          # 阶段2：18核飙 —— 地基已打好
           # ==============================
           fix_permissions
           populate_prebuilt
-          echo "=== Phase 2/2: full parallel build (-j$(nproc)) ==="
+          echo "=== Phase 2/2: full parallel (-j$(nproc)) ==="
           set +e
           FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j$(nproc) -k -s 2>&1 | tee -a "$SRCDIR/build.log"
           RESULT=${PIPESTATUS[0]}
