@@ -449,6 +449,14 @@ jobs:
             echo "CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y" >> "$SRCDIR/kernel/linux-4.19/config_base.6a.6764"
             export KCONFIG_ALLCONFIG=/dev/null
 
+            # WSL2 自托管 runner: autotools configure 脚本检测交叉编译器
+            # 时尝试链接测试程序失败（缺 sysroot）。设 cache 变量跳过
+            # 编译器能力检测，避免 "C compiler cannot create executables"。
+            export ac_cv_prog_cc_works=yes
+            export ac_cv_prog_cc_cross=yes
+            export ac_cv_prog_cxx_works=yes
+            export ac_cv_prog_cxx_cross=yes
+
             # WSL2/自托管 runner: 上次构建可能残留 fs.build 目录，
             # 构建系统的 rm (非 rm -r) 删不掉非空目录。
             rm -rf "$SRCDIR/targets/96764GW/fs.build" 2>/dev/null || true
