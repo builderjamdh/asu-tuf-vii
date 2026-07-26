@@ -413,6 +413,9 @@ jobs:
           # ---- 一次性配置 ----
           sed -i 's/# CONFIG_BCM_CPUFREQ is not set/CONFIG_BCM_CPUFREQ=y/' "$SRCDIR/kernel/linux-4.19/config_base.6a.6764"
           echo "CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y" >> "$SRCDIR/kernel/linux-4.19/config_base.6a.6764"
+          # iperf3 autotools configure 在交叉编译环境无法通过预处理检查，
+          # 路由器不需要内建 speedtest，直接禁用
+          sed -i 's/IPERF3=y/IPERF3=n/' release/src-rt/target.mak 2>/dev/null || true
           export KCONFIG_ALLCONFIG=/dev/null
           rm -rf "$SRCDIR/targets/96764GW/fs.build" 2>/dev/null || true
           if [ -f release/src/router/iperf3/configure ]; then
@@ -453,7 +456,7 @@ jobs:
           # kconfig 交互中，不被 jobserver 截断 stdin
           echo "=== Phase 2/2: retry failed targets (-j4) ==="
           set +e
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j4 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
+          (echo 4; yes "") | FORCE=1 make -C "$SRCDIR" "$MODEL" -j4 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
           RESULT=${PIPESTATUS[0]}
           set -e
 
