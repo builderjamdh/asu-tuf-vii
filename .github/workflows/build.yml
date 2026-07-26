@@ -492,11 +492,40 @@ jobs:
             sed -i 's/RTCONFIG_IPERF3=y/# RTCONFIG_IPERF3 is not set/' "$cfg" 2>/dev/null || true
           done
 
-          # Debian 12+ 的 GCC 把 -Wimplicit-int 从 warning 升级成了 error，
-          # 导致 busybox / kernel 的 kconfig 工具（lxdialog/check-lxdialog.sh）
-          # 在检查 ncurses 时编译 `main() {}` 直接报错，进而误判为 "ncurses not found"，
-          # setprofile 目标因此失败。设 HOSTCFLAGS 让宿主工具链容忍旧式 K&R 声明。
+          # Debian 12+ GCC treats -Wimplicit-int as error, breaking
+          # kernel/busybox kconfig ncurses check (lxdialog compiles `main(){}`).
+          # kconfig Makefiles use HOST_EXTRACFLAGS (u-boot/busybox/kernel).
+          # Also set HOSTCFLAGS as fallback for older Makefiles.
+          export HOST_EXTRACFLAGS="-Wno-implicit-int -Wno-return-type"
           export HOSTCFLAGS="-Wno-implicit-int -Wno-return-type"
+
+          # platform.mak copies prebuilt objects to ~50 destination dirs but
+          # only creates a subset via mkdir -p. The missing ones cause
+          # "cp: cannot create regular file ... No such file or directory".
+          # Create them all ahead of time.
+          echo "Creating platform.mak destination directories..."
+          for d in \
+            "$SRCDIR/shared/opensource/drv/unimac" \
+            "$SRCDIR/shared/opensource/drv/phys" \
+            "$SRCDIR/shared/opensource/drivers" \
+            "$SRCDIR/bcmdrivers/broadcom/char/tms/impl1" \
+            "$SRCDIR/bcmdrivers/opensource/char/serial/impl1" \
+            "$SRCDIR/bcmdrivers/opensource/char/spudd/impl4" \
+            "$SRCDIR/shared/opensource/pmc/impl1" \
+            "$SRCDIR/bcmdrivers/opensource/char/i2c/chips/impl1" \
+            "$SRCDIR/bcmdrivers/opensource/char/opticaldet/impl1" \
+            "$SRCDIR/bcmdrivers/opensource/char/wantypedet/impl1" \
+            "$SRCDIR/bcmdrivers/broadcom/net/wl/bcm96764/main/src/wl/linux/prebuilt" \
+          ; do
+            if [ -f "$d" ]; then rm -f "$d"; fi
+            mkdir -p "$d"
+          done
+
+          # platform.mak:505 copies wl.o -> wl_apsta.o within this dir,
+          # but nothing prior copies wl.o there — check_prebuilt only
+          # restores *_saved-* files, not raw .o. Put a copy ourselves.
+          cp -f "$SRCDIR/router-sysdep/hnd_extra/prebuilt/wl.o" \
+                "$SRCDIR/bcmdrivers/broadcom/net/wl/bcm96764/main/src/wl/linux/prebuilt/wl.o" 2>/dev/null || true
 
           # autotools configure 脚本在交叉编译时需要缓存变量
           # 来跳过 "C compiler cannot create executables" 之类的运行时测试。
