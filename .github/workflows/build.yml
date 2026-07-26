@@ -413,8 +413,10 @@ jobs:
           # ---- 一次性配置 ----
           sed -i 's/# CONFIG_BCM_CPUFREQ is not set/CONFIG_BCM_CPUFREQ=y/' "$SRCDIR/kernel/linux-4.19/config_base.6a.6764"
           echo "CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y" >> "$SRCDIR/kernel/linux-4.19/config_base.6a.6764"
-          # iperf3 autotools 交叉编译 configure 过不了，直接禁用
-          find release/src-rt -name "target.mak" -exec sed -i 's/IPERF3 *= *y/IPERF3=n/' {} \; 2>/dev/null || true
+          # iperf3 configure 脚本跨编不过，强制禁用
+          find release/src-rt -name "target.mak" | while read f; do
+            sed -i 's/IPERF3=y/IPERF3=n/g' "$f"
+          done
           export KCONFIG_ALLCONFIG=/dev/null
           rm -rf "$SRCDIR/targets/96764GW/fs.build" 2>/dev/null || true
           if [ -f release/src/router/iperf3/configure ]; then
