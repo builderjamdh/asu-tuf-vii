@@ -1737,7 +1737,7 @@ endif
 
 obj-n += lsof
 obj-$(RTCONFIG_IPERF) += iperf
-obj-$(RTCONFIG_IPERF3) += iperf3
+#obj-$(RTCONFIG_IPERF3) += iperf3
 
 obj-$(RTCONFIG_PUSH_EMAIL) += openssl
 obj-$(RTCONFIG_PUSH_EMAIL) += email-3.1.3
