@@ -120,9 +120,9 @@ jobs:
           # WSL/自托管 runner 的 ldconfig 可能无权限，容错处理。
           set +e
           if ldconfig -p 2>/dev/null | grep -qF "libreadline.so.6"; then
-            echo "libreadline.so.6 compat already exists"
+              echo "libreadline.so.6 compatibility link already exists"
           else
-            echo "Creating libreadline.so.6 compat symlink..."
+              echo "Creating libreadline.so.6 compatibility symlink..."
             READLINE8=$(find /usr/lib /lib -name "libreadline.so.8" 2>/dev/null | head -1)
             if [ -n "$READLINE8" ]; then
               sudo ln -sf "$READLINE8" "$(dirname "$READLINE8")/libreadline.so.6" 2>/dev/null || true
@@ -174,7 +174,7 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global --add safe.directory '*'
 
-      - name: Seed router-sysdep hnd_extra Prebuilt Files (old-stash pass)
+      - name: Populate router-sysdep/hnd_extra Prebuilt Files (old-stash fallback)
         run: |
           # 上一轮诊断（Diagnose router-sysdep Prebuilt Files）已经把结论坐实，
           # 诊断步骤本身就不再需要留在正式流程里了，结论直接写死在这里：
@@ -358,7 +358,7 @@ jobs:
           find "$SRCDIR/hostTools" -type f ! -name '*.*' -exec chmod +x {} \; 2>/dev/null || true
           find "$SRCDIR/bcmdrivers" -path "*/tools/*" -type f -exec chmod +x {} \; 2>/dev/null || true
 
-      - name: Ensure Empty Include Dirs
+      - name: Ensure Empty Include Directories
         run: |
           # git 不追踪空目录，但 ARM TF 的 CFLAGS 里带了
           # -Werror=missing-include-dirs（ALLOWED_INCLUDE_PATHS），
@@ -368,7 +368,7 @@ jobs:
           )
           for d in "${MISSING_DIRS[@]}"; do
             if [ ! -d "$d" ]; then
-              echo "Creating missing include dir: $d"
+              echo "Creating missing include directory: $d"
               mkdir -p "$d"
             fi
           done
@@ -569,9 +569,9 @@ lt_cv_path_OBJDUMP=/opt/toolchains/crosstools-arm_softfp-gcc-10.3-linux-4.19-gli
 lt_cv_path_RANLIB=/opt/toolchains/crosstools-arm_softfp-gcc-10.3-linux-4.19-glibc-2.32-binutils-2.36.1/usr/bin/arm-buildroot-linux-gnueabi-ranlib
 SITEEOF
           if [ -n "$SYSROOT" ]; then
-            echo "Cross sysroot detected: $SYSROOT"
+            echo "Cross-compilation sysroot detected: $SYSROOT"
           else
-            echo "!! gcc -print-sysroot returned empty — cross-compile linking may fail"
+            echo "!! gcc -print-sysroot returned an empty result — cross-compilation linking may fail"
           fi
           export CONFIG_SITE=/tmp/config.site
           rm -rf "$SRCDIR/targets/96764GW/fs.build" 2>/dev/null || true
@@ -587,7 +587,7 @@ SITEEOF
           fix_permissions
           populate_prebuilt
           apply_kernel_conf_patch
-          echo "=== Phase 1/2: sequential deps build (-j1) ==="
+          echo "=== Phase 1/2: sequential dependency build (-j1) ==="
           set +e
           FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j1 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
           set -e
@@ -611,8 +611,6 @@ SITEEOF
           fix_permissions
           populate_prebuilt
           echo "=== Phase 2/2: retry failed targets (-j8) ==="
-          populate_prebuilt
-          echo "=== Phase 2/2: retry failed targets (-j8) ==="
           set +e
           FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j8 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
           RESULT=${PIPESTATUS[0]}
@@ -623,7 +621,7 @@ SITEEOF
             grep -nE "error:|Error [0-9]+|No such file or directory" "$SRCDIR/build.log" | tail -n 80
           fi
 
-          echo "Build phase2 exit: $RESULT (non-fatal)"
+          echo "Build Phase 2 exit code: $RESULT (non-fatal)"
           # 编译错误不阻断——只要 TRX 生成了就算成功
 
       - name: Validate Firmware
@@ -635,7 +633,7 @@ SITEEOF
             exit 1
           fi
           SIZE=$(stat -c%s "$FW" 2>/dev/null || stat -f%z "$FW" 2>/dev/null)
-          echo "Firmware: $FW  ($SIZE bytes)"
+          echo "Firmware: $FW ($SIZE bytes)"
           if [ "$SIZE" -lt 10485760 ]; then
             echo "!! Firmware too small ($SIZE bytes), likely incomplete!"
             exit 1
