@@ -429,9 +429,9 @@ jobs:
           fix_permissions
           populate_prebuilt
           apply_kernel_conf_patch
-          echo "=== Phase 1/2: full parallel (-j4) ==="
+          echo "=== Phase 1/2: sequential deps build (-j1) ==="
           set +e
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j4 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j1 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
           set -e
 
           # ==============================
@@ -453,9 +453,9 @@ jobs:
           populate_prebuilt
           # 阶段2用 -j1 确保 yes 管道能传到子 make 的
           # kconfig 交互中，不被 jobserver 截断 stdin
-          echo "=== Phase 2/2: sequential retry (-j1) ==="
+          echo "=== Phase 2/2: retry failed targets (-j4) ==="
           set +e
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j1 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j4 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
           RESULT=${PIPESTATUS[0]}
           set -e
 
