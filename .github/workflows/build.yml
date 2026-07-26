@@ -174,139 +174,6 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global --add safe.directory '*'
 
-      - name: Populate router-sysdep/hnd_extra Prebuilt Files (old-stash fallback)
-        run: |
-          # 上一轮诊断（Diagnose router-sysdep Prebuilt Files）已经把结论坐实，
-          # 诊断步骤本身就不再需要留在正式流程里了，结论直接写死在这里：
-          #
-          #   - router-sysdep 是直接挂在 $SRCDIR 下面的，不是嵌套在
-          #     bcmdrivers/... 里面。真正的落地目录是
-          #     $SRCDIR/router-sysdep/hnd_extra/prebuilt——注意最后这级
-          #     prebuilt 不能省，之前少了这一级导致拷贝的文件从来没落在
-          #     make 会去找的地方，等于白拷。
-          #   - 这个目录里已经自带 6 个确认属于本机型 BCM6764 平台的闭源
-          #     无线驱动预编译产物：wl.o / igs.o / hnd.o / dhd.o / avs.o /
-          #     emf.o。这几个是真货，绝对不能被下面的老 stash 覆盖掉（下面
-          #     用的是 cp -avn，不会覆盖已存在文件，所以是安全的）。
-          #   - release/src/router/hnd_extra/prebuilt 是老款 BCM94908
-          #     （RT-AC86U / GT-AC2900 那代芯片）平台遗留下来的 stash，
-          #     文件名撞车但架构/型号不保证匹配 BCM6764，只能当"能让构建
-          #     往前走"的最后兜底，不保证功能正确。
-          #   - rdpa.o / rdpa_gpl.o / rdpa_usr.o、bdmf.o、board_button.o /
-          #     board_dg.o / board_wd.o 这几个文件，在源码和两处 prebuilt
-          #     里都完全找不到，下面的兜底也补不上。这是本机型 GPL 快照
-          #     本身缺件，不是脚本或路径问题，需要另外从同芯片型号的 GPL
-          #     包或华硕官方补充二进制包里获取（见 Build Firmware 步骤末尾
-          #     的失败提示）。
-          #
-          # 这一步只做"老 stash 兜底"。像 bcm_enet.o / bcm_bpm.o / cmdlist.o /
-          # bcmvlan.o / pktflow.o / bcmmcast.o 这些其实是各自组件目录里编译
-          # 出来的产物，这个阶段代码还没编译过，源路径必然还不存在，放在这里
-          # 抓没有意义——真正的抓取移到了 Build Firmware 步骤的重试循环里，
-          # 每次编译尝试之后都会补一轮（见 populate_prebuilt），这样才有机会
-          # 抓到上一轮编译已经生成出来的真实 .o。
-          DST="$SRCDIR/router-sysdep/hnd_extra/prebuilt"
-          mkdir -p "$DST"
-
-          OLD_STASH="release/src/router/hnd_extra/prebuilt"
-          if [ -d "$OLD_STASH" ]; then
-            cp -avn "$OLD_STASH"/. "$DST"/
-          else
-            echo "!! $OLD_STASH 不存在，跳过兜底"
-          fi
-
-          echo "=== 兜底后 $DST 内容 ==="
-          ls -la "$DST"
-
-      - name: Generate Missing Prebuilt Blob Stubs
-        run: |
-          export PATH="$TC_PATH/usr/bin:$PATH"
-          CC="arm-buildroot-linux-gnueabi-gcc"
-          DST="$SRCDIR/router-sysdep/hnd_extra/prebuilt"
-          mkdir -p "$DST"
-
-          gen_stub() {
-            local f="$1"
-            if [ -f "$DST/$f" ]; then return 0; fi
-            echo "  stub: $f"
-            echo "/* stub for $f */" | $CC -x c -c -o "$DST/$f" - 2>/dev/null || touch "$DST/$f"
-          }
-
-          echo "Generating stubs for all missing Broadcom prebuilt objects..."
-          # platform.mak lines 489-591 引用的全部预编译 .o 文件，跨 bcmdrivers/ +
-          # router-sysdep/ + shared/ + rdp/ 等多个目录。
-          # 这些 .o 是 Broadcom 闭源内核模块，GPL 发布包只给出 _saved 裸 ELF，
-          # 本机型 6764 的快照里绝大多数都没带。生成空 ARM .o stub 让链接器
-          # 不报 missing input file；如果后续 link 报 undefined symbol，说明
-          # 该 blob 有实际调用者，需要从同芯片 GPL 包获取真货。
-          gen_stub wfd.o
-          gen_stub unimac_drv_impl1.o
-          gen_stub mac_drv_unimac.o
-          gen_stub bcm_misc_hw_init_impl6.o
-          gen_stub chipinfo.o
-          gen_stub bcm_ingqos.o
-          gen_stub otp.o
-          gen_stub pktrunner.o
-          gen_stub pwrmngtd.o
-          gen_stub nciTMSkmod.o
-          gen_stub nciLservices.o
-          gen_stub nciexLinuxETH.o
-          gen_stub wlcsm.o
-          gen_stub bcm63xx_gpio.o
-          gen_stub bcm63xx_led.o
-          gen_stub board_button.o
-          gen_stub board_dg.o
-          gen_stub board_wd.o
-          gen_stub compat_board.o
-          gen_stub pushbutton.o
-          gen_stub spidevices.o
-          gen_stub rdp_fpm.o
-          gen_stub ivi.o
-          gen_stub bcmpdc.o
-          gen_stub bcm_arm64_setup.o
-          gen_stub bcm_arm_cpuidle.o
-          gen_stub bcm_extirq.o
-          gen_stub bcm_i2c.o
-          gen_stub bcm_legacy_io_map.o
-          gen_stub bcm_memc_irq.o
-          gen_stub bcm_thermal.o
-          gen_stub bcm_usb.o
-          gen_stub rdpa_cmd.o
-          gen_stub rdpa_gpl_ext.o
-          gen_stub rdpa_mw.o
-          gen_stub bcm63xx_cons.o
-          gen_stub bcmspu.o
-          gen_stub clk_rst.o
-          gen_stub pmc_drv.o
-          gen_stub pmc_fpm.o
-          gen_stub pmc_pcie.o
-          gen_stub pmc_pcm.o
-          gen_stub pmc_rdp.o
-          gen_stub pmc_sata.o
-          gen_stub pmc_spu.o
-          gen_stub pmc_switch.o
-          gen_stub pmc_sysfs.o
-          gen_stub pmc_usb.o
-          gen_stub bcmsfp_i2c.o
-          gen_stub opticaldet.o
-          gen_stub detect_opt.o
-          gen_stub ext_timer.o
-          gen_stub rdpa.o
-          gen_stub rdpa_gpl.o
-          gen_stub rdpa_usr.o
-          gen_stub bdmf.o
-
-          # 头文件空占位（platform.mak 会 cp 它们到 impl1/）
-          for h in ivi_map.h ivi_config.h bcmwifi_rates.h; do
-            if [ ! -f "$DST/$h" ]; then
-              echo "  stub header: $h"
-              touch "$DST/$h"
-            fi
-          done
-
-          echo "=== 补全 stub 后 $DST 内容 ==="
-          ls -la "$DST"
-
       - name: Fix Missing Version Tags
         run: |
           # 这份 GPL 源码快照没有携带 ASUS 内部打的发布 tag，
@@ -405,130 +272,16 @@ jobs:
           test "${{ inputs.clean }}" = "true" && make -C "$SRCDIR" clean || true
           export PATH="$TC_PATH/usr/bin:$PATH"
 
-          fix_permissions() {
-            # 同上：扫描整个 checkout，而不是只扫 $SRCDIR，
-            # 否则 release/src/router/ 下的脚本（如 gen_build_files.sh）
-            # 每次重试都会因为权限问题反复失败。
-            find . -not -path './.git/*' -type f \( \
-                -name "*.sh" -o -name "*.pl" -o -name "*.py" \
-                -o -name "configure" -o -name "autogen.sh" \
-                -o -name "config.guess" -o -name "config.sub" \
-              \) -exec chmod +x {} \; 2>/dev/null || true
-            find . -not -path './.git/*' -path "*/scripts/*" -type f \
-              ! -name "*.c" ! -name "*.h" ! -name "*.o" \
-              -exec chmod +x {} \; 2>/dev/null || true
-            grep -rlZ --include='*' --exclude-dir='.git' -m1 '^#!' . 2>/dev/null \
-              | xargs -0 -r chmod +x
-            find "$SRCDIR/hostTools" -type f ! -name '*.*' -exec chmod +x {} \; 2>/dev/null || true
-          }
-
-          apply_kernel_conf_patch() {
-            local tar="$SRCDIR/kernel/linux-4.19/src-linux-4.19.tar.gz"
-            local stamp="$tar.patched"
-            if [ -f "$tar" ] && [ ! -f "$stamp" ]; then
-              echo "Patching conf.c in kernel tarball (one-time, ~2min)..."
-              local d; d=$(mktemp -d)
-              tar xzf "$tar" -C "$d" -- linux-4.19/scripts/kconfig/conf.c 2>/dev/null
-              local c="$d/linux-4.19/scripts/kconfig/conf.c"
-              if [ -f "$c" ] && ! grep -q 'conf_set_all_new_symbols' "$c"; then
-                sed -i 's/\(case syncconfig:\)/\1\n\tconf_set_all_new_symbols(def_default);/' "$c"
-                # repack: rm old member, add patched one
-                gunzip < "$tar" > "$d/k.tar"
-                tar -f "$d/k.tar" --delete linux-4.19/scripts/kconfig/conf.c 2>/dev/null
-                tar -f "$d/k.tar" -C "$d" -r linux-4.19/scripts/kconfig/conf.c
-                gzip -c "$d/k.tar" > "$tar" && echo "  Patched conf.c in tarball"
-              fi
-              rm -rf "$d"
-              touch "$stamp"
-            fi
-          }
-
-          populate_prebuilt() {
-            # 每次编译尝试之后都跑一遍：上一轮 -k 部分编译很可能已经把
-            # bcm_enet.o / bcm_bpm.o / cmdlist.o / bcmvlan.o / pktflow.o /
-            # bcmmcast.o 这些开源组件自身的 .o 生成出来了，这里优先把它们
-            # 拷进 router-sysdep/hnd_extra/prebuilt，覆盖掉老 stash 里同名
-            # 但架构不保证对的占位文件。找不到就跳过，不当错误处理。
-            local DST="$SRCDIR/router-sysdep/hnd_extra/prebuilt"
-            mkdir -p "$DST"
-
-            local pairs=(
-              "bcmdrivers/opensource/net/enet/impl7/bcm_enet.o:bcm_enet.o"
-              "bcmdrivers/broadcom/char/bpm/impl1/bcm_bpm.o:bcm_bpm.o"
-              "bcmdrivers/broadcom/char/cmdlist/impl1/cmdlist.o:cmdlist.o"
-              "bcmdrivers/broadcom/char/vlan/impl1/bcmvlan.o:bcmvlan.o"
-              "bcmdrivers/broadcom/char/pktflow/impl1/pktflow.o:pktflow.o"
-              "bcmdrivers/opensource/char/mcast/impl1/bcmmcast.o:bcmmcast.o"
-            )
-            local pair rel name src
-            for pair in "${pairs[@]}"; do
-              rel="${pair%%:*}"
-              name="${pair##*:}"
-              src="$SRCDIR/$rel"
-              if [ -f "$src" ]; then
-                cp -av "$src" "$DST/$name" 2>/dev/null || true
-              fi
-            done
-
-            # 老 stash 仍然只补当前还缺失的文件，不覆盖上面拿到的真货，
-            # 也不覆盖仓库里本来就有的 wl.o / igs.o / hnd.o / dhd.o / avs.o / emf.o
-            local OLD_STASH="release/src/router/hnd_extra/prebuilt"
-            if [ -d "$OLD_STASH" ]; then
-              cp -avn "$OLD_STASH"/. "$DST"/ 2>/dev/null || true
-            fi
-          }
-
-          # ---- 一次性配置 ----
-          sed -i 's/# CONFIG_BCM_CPUFREQ is not set/CONFIG_BCM_CPUFREQ=y/' "$SRCDIR/kernel/linux-4.19/config_base.6a.6764"
-          echo "CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y" >> "$SRCDIR/kernel/linux-4.19/config_base.6a.6764"
-          # iperf3 configure 脚本跨编不过，强制禁用
-          find release/src-rt -name "target.mak" | while read f; do
-            sed -i 's/IPERF3=y/IPERF3=n/g' "$f"
-          done
-          export KCONFIG_ALLCONFIG=/dev/null
-          # 运行时禁用 iperf3：target.mak 的修改可能被 Makefile
-          # 内多处覆盖，直接在最终 .config 里改 RTCONFIG
-          for cfg in $(find . -name ".config" -path "*/router/*" 2>/dev/null); do
-            sed -i 's/RTCONFIG_IPERF3=y/# RTCONFIG_IPERF3 is not set/' "$cfg" 2>/dev/null || true
-          done
-
-          # Debian 12+ GCC treats -Wimplicit-int as error, breaking
-          # kernel/busybox kconfig ncurses check (lxdialog compiles `main(){}`).
-          # kconfig Makefiles use HOST_EXTRACFLAGS (u-boot/busybox/kernel).
-          # Also set HOSTCFLAGS as fallback for older Makefiles.
+          # ---- 环境兼容性 ----
+          # Debian 12+ GCC treats -Wimplicit-int as error.
+          # kconfig (busybox/kernel/u-boot) uses HOST_EXTRACFLAGS; also set
+          # HOSTCFLAGS for older scripts that pass it to check-lxdialog.sh.
           export HOST_EXTRACFLAGS="-Wno-implicit-int -Wno-return-type"
           export HOSTCFLAGS="-Wno-implicit-int -Wno-return-type"
 
-          # platform.mak copies prebuilt objects to ~50 destination dirs but
-          # only creates a subset via mkdir -p. The missing ones cause
-          # "cp: cannot create regular file ... No such file or directory".
-          # Create them all ahead of time.
-          echo "Creating platform.mak destination directories..."
-          for d in \
-            "$SRCDIR/shared/opensource/drv/unimac" \
-            "$SRCDIR/shared/opensource/drv/phys" \
-            "$SRCDIR/shared/opensource/drivers" \
-            "$SRCDIR/bcmdrivers/broadcom/char/tms/impl1" \
-            "$SRCDIR/bcmdrivers/opensource/char/serial/impl1" \
-            "$SRCDIR/bcmdrivers/opensource/char/spudd/impl4" \
-            "$SRCDIR/shared/opensource/pmc/impl1" \
-            "$SRCDIR/bcmdrivers/opensource/char/i2c/chips/impl1" \
-            "$SRCDIR/bcmdrivers/opensource/char/opticaldet/impl1" \
-            "$SRCDIR/bcmdrivers/opensource/char/wantypedet/impl1" \
-            "$SRCDIR/bcmdrivers/broadcom/net/wl/bcm96764/main/src/wl/linux/prebuilt" \
-          ; do
-            if [ -f "$d" ]; then rm -f "$d"; fi
-            mkdir -p "$d"
-          done
-
-          # platform.mak:505 copies wl.o -> wl_apsta.o within this dir,
-          # but nothing prior copies wl.o there — check_prebuilt only
-          # restores *_saved-* files, not raw .o. Put a copy ourselves.
-          cp -f "$SRCDIR/router-sysdep/hnd_extra/prebuilt/wl.o" \
-                "$SRCDIR/bcmdrivers/broadcom/net/wl/bcm96764/main/src/wl/linux/prebuilt/wl.o" 2>/dev/null || true
-
-          # autotools configure 脚本在交叉编译时需要缓存变量
-          # 来跳过 "C compiler cannot create executables" 之类的运行时测试。
+          # autotools configure cache — skip runtime tests during cross-compile.
+          # Without these, configure scripts try to compile+run test programs
+          # on the host, which fails for an ARM cross-compiler.
           SYSROOT=$("$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-gcc" -print-sysroot 2>/dev/null || echo "")
           printf '%s\n' \
             "ac_cv_prog_cc_works=yes" \
@@ -545,17 +298,12 @@ jobs:
             "ac_cv_func_fork_works=yes" \
             "ac_cv_func_vfork=yes" \
             "ac_cv_func_vfork_works=yes" \
-            "ac_cv_func_wait3_rusage=yes" \
             "ac_cv_header_stdc=yes" \
             "ac_cv_header_stdlib_h=yes" \
             "ac_cv_header_string_h=yes" \
             "ac_cv_header_unistd_h=yes" \
             "ac_cv_header_sys_stat_h=yes" \
             "ac_cv_header_sys_types_h=yes" \
-            "ac_cv_header_sys_wait_h=yes" \
-            "ac_cv_header_sys_time_h=yes" \
-            "ac_cv_header_sys_param_h=yes" \
-            "ac_cv_header_sys_mount_h=yes" \
             "ac_cv_header_fcntl_h=yes" \
             "ac_cv_header_signal_h=yes" \
             "ac_cv_header_time_h=yes" \
@@ -572,7 +320,6 @@ jobs:
             "ac_cv_sizeof_short=2" \
             "ac_cv_sizeof_void_p=4" \
             "ac_cv_sizeof_size_t=4" \
-            "ac_cv_sizeof_off_t=8" \
             "ac_cv_c_bigendian=no" \
             "ac_cv_c_compiler_gnu=yes" \
             "ac_cv_cxx_compiler_gnu=yes" \
@@ -580,7 +327,6 @@ jobs:
             "ac_cv_prog_gxx=yes" \
             "ac_cv_prog_cc_g=yes" \
             "ac_cv_prog_cxx_g=yes" \
-            "ac_cv_ol_compiler_gnu=yes" \
             "ac_cv_env_CPPFLAGS_set=" \
             "ac_cv_env_CPPFLAGS_value=" \
             "ac_cv_env_LDFLAGS_set=" \
@@ -598,33 +344,56 @@ jobs:
             "lt_cv_path_RANLIB=/opt/toolchains/crosstools-arm_softfp-gcc-10.3-linux-4.19-glibc-2.32-binutils-2.36.1/usr/bin/arm-buildroot-linux-gnueabi-ranlib" \
             > /tmp/config.site
           if [ -n "$SYSROOT" ]; then
-            echo "Cross-compilation sysroot detected: $SYSROOT"
+            echo "Cross-compilation sysroot: $SYSROOT"
           else
-            echo "!! gcc -print-sysroot returned an empty result — cross-compilation linking may fail"
+            echo "!! gcc -print-sysroot returned empty — linking may fail"
           fi
           export CONFIG_SITE=/tmp/config.site
-          rm -rf "$SRCDIR/targets/96764GW/fs.build" 2>/dev/null || true
-          if [ -f release/src/router/iperf3/configure ]; then
-            (cd release/src/router/iperf3 && autoreconf -i -f 2>/dev/null) || true
-          fi
 
-          # ==============================
-          # 单次全速构建 — 前置修复（prebuilt stubs / CONFIG_SITE /
-          # HOSTCFLAGS / 内核 config patch）已将已知阻断项全部消除，
-          # make -j16 直接全核编译到底，无需分段重试。
-          # ==============================
-          fix_permissions
-          populate_prebuilt
-          apply_kernel_conf_patch
-          echo "=== Build: single pass (-j16) ==="
-          set +e
+          # platform.mak cp's prebuilt objects to destination dirs but
+          # doesn't create all of them. Pre-create the missing ones.
+          for d in \
+            "$SRCDIR/shared/opensource/drv/unimac" \
+            "$SRCDIR/shared/opensource/drv/phys" \
+            "$SRCDIR/shared/opensource/drivers" \
+            "$SRCDIR/bcmdrivers/broadcom/char/tms/impl1" \
+            "$SRCDIR/bcmdrivers/opensource/char/serial/impl1" \
+            "$SRCDIR/bcmdrivers/opensource/char/spudd/impl4" \
+            "$SRCDIR/shared/opensource/pmc/impl1" \
+            "$SRCDIR/bcmdrivers/opensource/char/i2c/chips/impl1" \
+            "$SRCDIR/bcmdrivers/opensource/char/opticaldet/impl1" \
+            "$SRCDIR/bcmdrivers/opensource/char/wantypedet/impl1" \
+            "$SRCDIR/bcmdrivers/broadcom/net/wl/bcm96764/main/src/wl/linux/prebuilt" \
+          ; do
+            if [ -f "$d" ]; then rm -f "$d"; fi
+            mkdir -p "$d"
+          done
+          # platform.mak:505 copies wl.o -> wl_apsta.o within this dir,
+          # but the source wl.o only arrives there for non-AX builds.
+          # For BE_4916 (AX path), copy it ourselves.
+          cp -f "$SRCDIR/router-sysdep/hnd_extra/prebuilt/wl.o" \
+                "$SRCDIR/bcmdrivers/broadcom/net/wl/bcm96764/main/src/wl/linux/prebuilt/wl.o" 2>/dev/null || true
+
+          # iperf3 is a benchmark tool not needed for the firmware image.
+          # Its autotools configure fails in cross-compile environments.
+          # Disable it via target.mak + any existing router .config.
+          find release/src-rt -name "target.mak" | while read f; do
+            sed -i 's/IPERF3=y/IPERF3=n/g' "$f"
+          done
+          for cfg in $(find . -name ".config" -path "*/router/*" 2>/dev/null); do
+            sed -i 's/RTCONFIG_IPERF3=y/# RTCONFIG_IPERF3 is not set/' "$cfg" 2>/dev/null || true
+          done
+
+          # ---- 构建 ----
+          # GPL包本身是完整的（ASUSGO团队已验证），直接单次make全核编译。
+          # yes "" 管道回答任何交互式配置提示。
+          echo "=== Build: TUF-BE3600_V2 (-j16) ==="
           FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j16 -s 2>&1 | tee "$SRCDIR/build.log"
           RESULT=${PIPESTATUS[0]}
-          set -e
 
           if [ "$RESULT" -ne 0 ]; then
-            echo "=== Build failed (exit $RESULT), extracting error lines ==="
-            grep -nE "error:|Error [0-9]+|No such file or directory" "$SRCDIR/build.log" | tail -n 80
+            echo "=== Build failed (exit $RESULT), tail of errors: ==="
+            grep -nE "error:|Error [0-9]+|fatal:" "$SRCDIR/build.log" | tail -n 60
           else
             echo "Build succeeded (exit 0)"
           fi
