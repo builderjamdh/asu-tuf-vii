@@ -418,8 +418,6 @@ jobs:
           if [ -f release/src/router/iperf3/configure ]; then
             (cd release/src/router/iperf3 && autoreconf -i -f 2>/dev/null) || true
           fi
-          printf 'ac_cv_prog_cc_works=yes\nac_cv_prog_cc_cross=yes\nac_cv_prog_cxx_works=yes\nac_cv_prog_cxx_cross=yes\n' > /tmp/config.site
-          export CONFIG_SITE=/tmp/config.site
 
           # ==============================
           # 阶段1：18核全开 —— 能编的都编掉。
