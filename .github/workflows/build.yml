@@ -28,7 +28,7 @@ env:
   TC_REPO: https://github.com/SWRT-dev/bcmhnd-toolchains.git
 jobs:
   build:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 480
     steps:
       - name: Checkout
