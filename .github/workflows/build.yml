@@ -418,8 +418,11 @@ jobs:
           if [ -f release/src/router/iperf3/configure ]; then
             (cd release/src/router/iperf3 && autoreconf -i -f 2>/dev/null) || true
           fi
-          # WSL2 autotools 交叉编译：CONFIG_SITE 文件会被所有
-          # configure 脚本自动 source，比 export 环境变量更可靠
+          # 交叉编译链接：指定 toolchain 的 sysroot 让 configure
+          # 测试程序能正确链接
+          SYSROOT="$TC_PATH/arm-buildroot-linux-gnueabi/sysroot"
+          export CFLAGS="--sysroot=$SYSROOT $CFLAGS"
+          export LDFLAGS="--sysroot=$SYSROOT $LDFLAGS"
           printf 'ac_cv_prog_cc_works=yes\nac_cv_prog_cc_cross=yes\nac_cv_prog_cxx_works=yes\nac_cv_prog_cxx_cross=yes\n' > /tmp/config.site
           export CONFIG_SITE=/tmp/config.site
 
