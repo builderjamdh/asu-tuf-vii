@@ -413,9 +413,8 @@ jobs:
           # ---- 一次性配置 ----
           sed -i 's/# CONFIG_BCM_CPUFREQ is not set/CONFIG_BCM_CPUFREQ=y/' "$SRCDIR/kernel/linux-4.19/config_base.6a.6764"
           echo "CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y" >> "$SRCDIR/kernel/linux-4.19/config_base.6a.6764"
-          # iperf3 autotools configure 在交叉编译环境无法通过预处理检查，
-          # 路由器不需要内建 speedtest，直接禁用
-          sed -i 's/IPERF3=y/IPERF3=n/' release/src-rt/target.mak 2>/dev/null || true
+          # iperf3 autotools 交叉编译 configure 过不了，直接禁用
+          find release/src-rt -name "target.mak" -exec sed -i 's/IPERF3 *= *y/IPERF3=n/' {} \; 2>/dev/null || true
           export KCONFIG_ALLCONFIG=/dev/null
           rm -rf "$SRCDIR/targets/96764GW/fs.build" 2>/dev/null || true
           if [ -f release/src/router/iperf3/configure ]; then
@@ -446,17 +445,18 @@ jobs:
           # 无法提供新选项的默认值。用空文件让
           # kconfig 走默认路径而非弹窗提问。
           export KCONFIG_ALLCONFIG=/dev/null
-          # 内核 .config 已写死 governor，再补一个
-          # 空 allconfig 让 busybox 也走默认。
-          truncate -s0 /tmp/kconfig_allconfig 2>/dev/null || true
-          export KCONFIG_ALLCONFIG=/tmp/kconfig_allconfig
+          # 阶段2前写死内核 governor 防 syncconfig 弹窗
+          KCFG="$SRCDIR/kernel/linux-4.19/.config"
+          if [ -f "$KCFG" ]; then
+            sed -i '/CONFIG_CPU_FREQ_DEFAULT_GOV_/d' "$KCFG"
+            echo "CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y" >> "$KCFG"
+            echo "CONFIG_CPU_FREQ_GOV_ONDEMAND=y" >> "$KCFG"
+          fi
           fix_permissions
           populate_prebuilt
-          # 阶段2用 -j1 确保 yes 管道能传到子 make 的
-          # kconfig 交互中，不被 jobserver 截断 stdin
           echo "=== Phase 2/2: retry failed targets (-j4) ==="
           set +e
-          (echo 4; yes "") | FORCE=1 make -C "$SRCDIR" "$MODEL" -j4 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j4 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
           RESULT=${PIPESTATUS[0]}
           set -e
 
