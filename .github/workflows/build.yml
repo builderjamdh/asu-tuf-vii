@@ -439,20 +439,23 @@ jobs:
           # 已成功的目标，只编译阶段1失败的包。
           # 此时依赖库已全就位，几乎零失败。
           # ==============================
-          # 阶段2前把 CPU governor 写死到内核 .config，
-          # 避免 syncconfig 交互提示
-          KCFG="$SRCDIR/kernel/linux-4.19/.config"
-          if [ -f "$KCFG" ]; then
-            sed -i '/CONFIG_CPU_FREQ_DEFAULT_GOV_/d' "$KCFG"
-            echo "CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y" >> "$KCFG"
-            echo "CONFIG_CPU_FREQ_GOV_ONDEMAND=y" >> "$KCFG"
-            echo "CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE is not set" >> "$KCFG"
-          fi
+          # 阶段2前处理 busybox/内核配置弹窗：
+          # KCONFIG_ALLCONFIG 对 kconfig 体系的
+          # syncconfig 交互有抑制作用，但 /dev/null
+          # 无法提供新选项的默认值。用空文件让
+          # kconfig 走默认路径而非弹窗提问。
+          export KCONFIG_ALLCONFIG=/dev/null
+          # 内核 .config 已写死 governor，再补一个
+          # 空 allconfig 让 busybox 也走默认。
+          truncate -s0 /tmp/kconfig_allconfig 2>/dev/null || true
+          export KCONFIG_ALLCONFIG=/tmp/kconfig_allconfig
           fix_permissions
           populate_prebuilt
-          echo "=== Phase 2/2: retry failed targets (-j$(nproc)) ==="
+          # 阶段2用 -j1 确保 yes 管道能传到子 make 的
+          # kconfig 交互中，不被 jobserver 截断 stdin
+          echo "=== Phase 2/2: sequential retry (-j1) ==="
           set +e
-          (echo 4; yes "") | FORCE=1 make -C "$SRCDIR" "$MODEL" -j$(nproc) -k -s 2>&1 | tee -a "$SRCDIR/build.log"
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j1 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
           RESULT=${PIPESTATUS[0]}
           set -e
 
