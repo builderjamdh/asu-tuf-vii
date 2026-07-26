@@ -11,6 +11,8 @@ on:
         type: boolean
         default: false
 env:
+  LANG: C
+  LC_ALL: C
   MODEL: TUF-BE3600_V2
   SRCDIR: release/src-rt-5.04behnd.4916
   TC_NAME: crosstools-arm_softfp-gcc-10.3-linux-4.19-glibc-2.32-binutils-2.36.1
@@ -42,7 +44,8 @@ jobs:
             gettext texinfo intltool libglib2.0-dev zlib1g-dev \
             libssl-dev liblzma-dev liblzo2-dev python3 rsync wget curl unzip xxd \
             bc cpio lzop lz4 xz-utils libelf-dev libncurses-dev \
-            libreadline-dev uuid-dev libuuid1 gperf libltdl-dev automake cmake
+            libreadline-dev uuid-dev libuuid1 gperf libltdl-dev automake cmake \
+            libcurl4-openssl-dev libxml2-dev
           # autopoint 可能在 gettext 包里也可能独立，用 || true 兜底
           sudo apt-get install -y -qq autopoint 2>/dev/null || true
 
