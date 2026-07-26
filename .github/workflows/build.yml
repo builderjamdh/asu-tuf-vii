@@ -580,22 +580,22 @@ jobs:
           fi
 
           # ==============================
-          # 阶段1：18核全开 —— 能编的都编掉。
-          # 依赖乱序失败的非关键包记在 build.log，
-          # make -k 保证不中断继续跑。
+          # 阶段1：-j8 中速全量构建 —— 内核及其模块可受益于多核，
+          # 同时可控的并行度降低 Broadcom Makefile 缺依赖声明导致
+          # 的竞态风险。-k 确保不因非关键包失败而中断。
           # ==============================
           fix_permissions
           populate_prebuilt
           apply_kernel_conf_patch
-          echo "=== Phase 1/2: sequential dependency build (-j1) ==="
+          echo "=== Phase 1/2: full build (-j8) ==="
           set +e
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j1 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j8 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
           set -e
 
           # ==============================
-          # 阶段2：精准补刀 —— make 天然跳过
-          # 已成功的目标，只编译阶段1失败的包。
-          # 此时依赖库已全就位，几乎零失败。
+          # 阶段2：-j16 全核补刀 —— Phase 1 已产出内核映像和大部分
+          # 库文件，依赖关系基本满足。此时 make 天然跳过已成功目标，
+          # 只编译 Phase 1 失败/遗漏的包，全核并行几乎无竞态。
           # ==============================
           # 阶段2前处理 busybox/内核配置弹窗：
           # 如果阶段1 内核编译成功（存在 vmlinux），Phase 2 设
