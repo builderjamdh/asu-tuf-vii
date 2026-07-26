@@ -429,9 +429,9 @@ jobs:
           fix_permissions
           populate_prebuilt
           apply_kernel_conf_patch
-          echo "=== Phase 1/2: full parallel (-j18) ==="
+          echo "=== Phase 1/2: full parallel (-j4) ==="
           set +e
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j18 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j4 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
           set -e
 
           # ==============================
