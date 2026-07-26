@@ -439,6 +439,15 @@ jobs:
           # 已成功的目标，只编译阶段1失败的包。
           # 此时依赖库已全就位，几乎零失败。
           # ==============================
+          # 阶段2前把 CPU governor 写死到内核 .config，
+          # 避免 syncconfig 交互提示
+          KCFG="$SRCDIR/kernel/linux-4.19/.config"
+          if [ -f "$KCFG" ]; then
+            sed -i '/CONFIG_CPU_FREQ_DEFAULT_GOV_/d' "$KCFG"
+            echo "CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y" >> "$KCFG"
+            echo "CONFIG_CPU_FREQ_GOV_ONDEMAND=y" >> "$KCFG"
+            echo "CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE is not set" >> "$KCFG"
+          fi
           fix_permissions
           populate_prebuilt
           echo "=== Phase 2/2: retry failed targets (-j$(nproc)) ==="
