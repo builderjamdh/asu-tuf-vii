@@ -445,13 +445,14 @@ jobs:
           # 无法提供新选项的默认值。用空文件让
           # kconfig 走默认路径而非弹窗提问。
           export KCONFIG_ALLCONFIG=/dev/null
-          # 阶段2前写死内核 governor 防 syncconfig 弹窗
-          KCFG="$SRCDIR/kernel/linux-4.19/.config"
-          if [ -f "$KCFG" ]; then
-            sed -i '/CONFIG_CPU_FREQ_DEFAULT_GOV_/d' "$KCFG"
-            echo "CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y" >> "$KCFG"
-            echo "CONFIG_CPU_FREQ_GOV_ONDEMAND=y" >> "$KCFG"
-          fi
+          # 阶段2前为内核 syncconfig 准备 KCONFIG_ALLCONFIG
+          # 提供 CPU governor 默认值，消除交互选择弹窗
+          cat > /tmp/kconfig_extra << 'EOF'
+CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y
+CONFIG_CPU_FREQ_GOV_ONDEMAND=y
+# CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE is not set
+EOF
+          export KCONFIG_ALLCONFIG=/tmp/kconfig_extra
           fix_permissions
           populate_prebuilt
           echo "=== Phase 2/2: retry failed targets (-j4) ==="
