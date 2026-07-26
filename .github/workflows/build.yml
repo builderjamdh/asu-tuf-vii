@@ -440,18 +440,8 @@ jobs:
           # 此时依赖库已全就位，几乎零失败。
           # ==============================
           # 阶段2前处理 busybox/内核配置弹窗：
-          # KCONFIG_ALLCONFIG 对 kconfig 体系的
-          # syncconfig 交互有抑制作用，但 /dev/null
-          # 无法提供新选项的默认值。用空文件让
-          # kconfig 走默认路径而非弹窗提问。
-          export KCONFIG_ALLCONFIG=/dev/null
-          # 阶段2前为内核 syncconfig 准备 KCONFIG_ALLCONFIG
-          # 提供 CPU governor 默认值，消除交互选择弹窗
-          cat > /tmp/kconfig_extra << 'EOF'
-CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y
-CONFIG_CPU_FREQ_GOV_ONDEMAND=y
-# CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE is not set
-EOF
+          # 阶段2前为内核 syncconfig 准备 governor 默认值
+          printf 'CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y\nCONFIG_CPU_FREQ_GOV_ONDEMAND=y\n# CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE is not set\n' > /tmp/kconfig_extra
           export KCONFIG_ALLCONFIG=/tmp/kconfig_extra
           fix_permissions
           populate_prebuilt
