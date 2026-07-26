@@ -220,24 +220,87 @@ jobs:
 
       - name: Generate Missing Prebuilt Blob Stubs
         run: |
-          # 本机型 GPL 快照缺少 7 个 Broadcom 闭源预编译 .o 文件，
-          # rdpa/bdmf 实际驱动逻辑在各自内核模块编译时产出，
-          # board_* 是板级初始化占位。生成空 ARM .o stub 绕过链接检查。
           export PATH="$TC_PATH/usr/bin:$PATH"
           CC="arm-buildroot-linux-gnueabi-gcc"
           DST="$SRCDIR/router-sysdep/hnd_extra/prebuilt"
           mkdir -p "$DST"
 
-          # 只生成当前确实缺失的文件
-          MISSING_BLOBS=(rdpa.o rdpa_gpl.o rdpa_usr.o bdmf.o board_button.o board_dg.o board_wd.o)
-          for f in "${MISSING_BLOBS[@]}"; do
-            if [ ! -f "$DST/$f" ]; then
-              echo "Generating stub: $f"
-              # 空 Translation Unit 产生的 .o 只有 ELF header + empty .text/.data，
-              # 链接器不会报 symbol 冲突，但不能满足真正需要这些 symbol 的目标文件。
-              # 如果后续 link 报 undefined symbol，说明该 blob 有实际调用者，
-              # 届时需要从同芯片型号 GPL 获取真货。
-              echo "/* stub for $f */" | $CC -x c -c -o "$DST/$f" - 2>/dev/null || touch "$DST/$f"
+          gen_stub() {
+            local f="$1"
+            if [ -f "$DST/$f" ]; then return 0; fi
+            echo "  stub: $f"
+            echo "/* stub for $f */" | $CC -x c -c -o "$DST/$f" - 2>/dev/null || touch "$DST/$f"
+          }
+
+          echo "Generating stubs for all missing Broadcom prebuilt objects..."
+          # platform.mak lines 489-591 引用的全部预编译 .o 文件，跨 bcmdrivers/ +
+          # router-sysdep/ + shared/ + rdp/ 等多个目录。
+          # 这些 .o 是 Broadcom 闭源内核模块，GPL 发布包只给出 _saved 裸 ELF，
+          # 本机型 6764 的快照里绝大多数都没带。生成空 ARM .o stub 让链接器
+          # 不报 missing input file；如果后续 link 报 undefined symbol，说明
+          # 该 blob 有实际调用者，需要从同芯片 GPL 包获取真货。
+          gen_stub wfd.o
+          gen_stub unimac_drv_impl1.o
+          gen_stub mac_drv_unimac.o
+          gen_stub bcm_misc_hw_init_impl6.o
+          gen_stub chipinfo.o
+          gen_stub bcm_ingqos.o
+          gen_stub otp.o
+          gen_stub pktrunner.o
+          gen_stub pwrmngtd.o
+          gen_stub nciTMSkmod.o
+          gen_stub nciLservices.o
+          gen_stub nciexLinuxETH.o
+          gen_stub wlcsm.o
+          gen_stub bcm63xx_gpio.o
+          gen_stub bcm63xx_led.o
+          gen_stub board_button.o
+          gen_stub board_dg.o
+          gen_stub board_wd.o
+          gen_stub compat_board.o
+          gen_stub pushbutton.o
+          gen_stub spidevices.o
+          gen_stub rdp_fpm.o
+          gen_stub ivi.o
+          gen_stub bcmpdc.o
+          gen_stub bcm_arm64_setup.o
+          gen_stub bcm_arm_cpuidle.o
+          gen_stub bcm_extirq.o
+          gen_stub bcm_i2c.o
+          gen_stub bcm_legacy_io_map.o
+          gen_stub bcm_memc_irq.o
+          gen_stub bcm_thermal.o
+          gen_stub bcm_usb.o
+          gen_stub rdpa_cmd.o
+          gen_stub rdpa_gpl_ext.o
+          gen_stub rdpa_mw.o
+          gen_stub bcm63xx_cons.o
+          gen_stub bcmspu.o
+          gen_stub clk_rst.o
+          gen_stub pmc_drv.o
+          gen_stub pmc_fpm.o
+          gen_stub pmc_pcie.o
+          gen_stub pmc_pcm.o
+          gen_stub pmc_rdp.o
+          gen_stub pmc_sata.o
+          gen_stub pmc_spu.o
+          gen_stub pmc_switch.o
+          gen_stub pmc_sysfs.o
+          gen_stub pmc_usb.o
+          gen_stub bcmsfp_i2c.o
+          gen_stub opticaldet.o
+          gen_stub detect_opt.o
+          gen_stub ext_timer.o
+          gen_stub rdpa.o
+          gen_stub rdpa_gpl.o
+          gen_stub rdpa_usr.o
+          gen_stub bdmf.o
+
+          # 头文件空占位（platform.mak 会 cp 它们到 impl1/）
+          for h in ivi_map.h ivi_config.h bcmwifi_rates.h; do
+            if [ ! -f "$DST/$h" ]; then
+              echo "  stub header: $h"
+              touch "$DST/$h"
             fi
           done
 
@@ -428,7 +491,88 @@ jobs:
           for cfg in $(find . -name ".config" -path "*/router/*" 2>/dev/null); do
             sed -i 's/RTCONFIG_IPERF3=y/# RTCONFIG_IPERF3 is not set/' "$cfg" 2>/dev/null || true
           done
-          printf 'ac_cv_prog_cc_works=yes\nac_cv_prog_cc_cross=yes\nac_cv_prog_cxx_works=yes\nac_cv_prog_cxx_cross=yes\n' > /tmp/config.site
+
+          # Debian 12+ 的 GCC 把 -Wimplicit-int 从 warning 升级成了 error，
+          # 导致 busybox / kernel 的 kconfig 工具（lxdialog/check-lxdialog.sh）
+          # 在检查 ncurses 时编译 `main() {}` 直接报错，进而误判为 "ncurses not found"，
+          # setprofile 目标因此失败。设 HOSTCFLAGS 让宿主工具链容忍旧式 K&R 声明。
+          export HOSTCFLAGS="-Wno-implicit-int -Wno-return-type"
+
+          # autotools configure 脚本在交叉编译时需要缓存变量
+          # 来跳过 "C compiler cannot create executables" 之类的运行时测试。
+          SYSROOT=$("$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-gcc" -print-sysroot 2>/dev/null || echo "")
+          cat > /tmp/config.site <<'SITEEOF'
+ac_cv_prog_cc_works=yes
+ac_cv_prog_cc_cross=yes
+ac_cv_prog_cxx_works=yes
+ac_cv_prog_cxx_cross=yes
+ac_cv_func_malloc_0_nonnull=yes
+ac_cv_func_realloc_0_nonnull=yes
+ac_cv_func_memcmp_working=yes
+ac_cv_func_mmap_fixed_mapped=yes
+ac_cv_func_setpgrp_void=yes
+ac_cv_func_strtod=yes
+ac_cv_func_fork=yes
+ac_cv_func_fork_works=yes
+ac_cv_func_vfork=yes
+ac_cv_func_vfork_works=yes
+ac_cv_func_wait3_rusage=yes
+ac_cv_header_stdc=yes
+ac_cv_header_stdlib_h=yes
+ac_cv_header_string_h=yes
+ac_cv_header_unistd_h=yes
+ac_cv_header_sys_stat_h=yes
+ac_cv_header_sys_types_h=yes
+ac_cv_header_sys_wait_h=yes
+ac_cv_header_sys_time_h=yes
+ac_cv_header_sys_param_h=yes
+ac_cv_header_sys_mount_h=yes
+ac_cv_header_fcntl_h=yes
+ac_cv_header_signal_h=yes
+ac_cv_header_time_h=yes
+ac_cv_header_dlfcn_h=yes
+ac_cv_header_netinet_in_h=yes
+ac_cv_header_arpa_inet_h=yes
+ac_cv_header_stdint_h=yes
+ac_cv_header_inttypes_h=yes
+ac_cv_header_sched_h=yes
+ac_cv_header_pthread_h=yes
+ac_cv_sizeof_int=4
+ac_cv_sizeof_long=4
+ac_cv_sizeof_long_long=8
+ac_cv_sizeof_short=2
+ac_cv_sizeof_void_p=4
+ac_cv_sizeof_size_t=4
+ac_cv_sizeof_off_t=8
+ac_cv_c_bigendian=no
+ac_cv_c_compiler_gnu=yes
+ac_cv_cxx_compiler_gnu=yes
+ac_cv_prog_gcc=yes
+ac_cv_prog_gxx=yes
+ac_cv_prog_cc_g=yes
+ac_cv_prog_cxx_g=yes
+ac_cv_ol_compiler_gnu=yes
+ac_cv_env_CPPFLAGS_set=
+ac_cv_env_CPPFLAGS_value=
+ac_cv_env_LDFLAGS_set=
+ac_cv_env_LDFLAGS_value=
+ac_cv_env_LIBS_set=
+ac_cv_env_LIBS_value=
+ac_cv_build=x86_64-pc-linux-gnu
+ac_cv_host=arm-buildroot-linux-gnueabi
+ac_cv_target=arm-buildroot-linux-gnueabi
+lt_cv_sys_max_cmd_len=32768
+lt_cv_path_LD=/opt/toolchains/crosstools-arm_softfp-gcc-10.3-linux-4.19-glibc-2.32-binutils-2.36.1/usr/bin/arm-buildroot-linux-gnueabi-ld
+lt_cv_path_NM=/opt/toolchains/crosstools-arm_softfp-gcc-10.3-linux-4.19-glibc-2.32-binutils-2.36.1/usr/bin/arm-buildroot-linux-gnueabi-nm
+lt_cv_path_STRIP=/opt/toolchains/crosstools-arm_softfp-gcc-10.3-linux-4.19-glibc-2.32-binutils-2.36.1/usr/bin/arm-buildroot-linux-gnueabi-strip
+lt_cv_path_OBJDUMP=/opt/toolchains/crosstools-arm_softfp-gcc-10.3-linux-4.19-glibc-2.32-binutils-2.36.1/usr/bin/arm-buildroot-linux-gnueabi-objdump
+lt_cv_path_RANLIB=/opt/toolchains/crosstools-arm_softfp-gcc-10.3-linux-4.19-glibc-2.32-binutils-2.36.1/usr/bin/arm-buildroot-linux-gnueabi-ranlib
+SITEEOF
+          if [ -n "$SYSROOT" ]; then
+            echo "Cross sysroot detected: $SYSROOT"
+          else
+            echo "!! gcc -print-sysroot returned empty — cross-compile linking may fail"
+          fi
           export CONFIG_SITE=/tmp/config.site
           rm -rf "$SRCDIR/targets/96764GW/fs.build" 2>/dev/null || true
           if [ -f release/src/router/iperf3/configure ]; then
@@ -454,9 +598,16 @@ jobs:
           # 此时依赖库已全就位，几乎零失败。
           # ==============================
           # 阶段2前处理 busybox/内核配置弹窗：
-          # 阶段2：内核已编译过，设 KERN_TARGET 为
-          # olddefconfig 替换 prepare_bcm_driver 防交互
-          export KERN_TARGET=olddefconfig
+          # 如果阶段1 内核编译成功（存在 vmlinux），Phase 2 设
+          # KERN_TARGET=olddefconfig 跳过内核重编译防交互弹窗。
+          # 如果阶段1 失败导致内核没编出来，Phase 2 强制重新编内核。
+          if [ -f "$SRCDIR/targets/96764GW/vmlinux" ]; then
+            echo "Phase 1 内核存在，Phase 2 跳过内核编译"
+            export KERN_TARGET=olddefconfig
+          else
+            echo "Phase 1 未生成 vmlinux，Phase 2 强制全量编译内核"
+            unset KERN_TARGET
+          fi
           fix_permissions
           populate_prebuilt
           echo "=== Phase 2/2: retry failed targets (-j8) ==="
