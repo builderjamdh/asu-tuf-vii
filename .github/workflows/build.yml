@@ -420,13 +420,7 @@ jobs:
           fi
           # WSL2 autotools 交叉编译：CONFIG_SITE 文件会被所有
           # configure 脚本自动 source，比 export 环境变量更可靠
-          cat > /tmp/config.site << 'SITEEOF'
-ac_cv_prog_cc_works=yes
-ac_cv_prog_cc_cross=yes
-ac_cv_prog_cxx_works=yes
-ac_cv_prog_cxx_cross=yes
-: ${CONFIG_SITE:=/tmp/config.site}
-SITEEOF
+          printf 'ac_cv_prog_cc_works=yes\nac_cv_prog_cc_cross=yes\nac_cv_prog_cxx_works=yes\nac_cv_prog_cxx_cross=yes\n' > /tmp/config.site
           export CONFIG_SITE=/tmp/config.site
 
           # ==============================
