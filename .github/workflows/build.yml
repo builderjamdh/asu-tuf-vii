@@ -290,6 +290,7 @@ jobs:
 
           echo "Ensuring hostTools binaries are executable..."
           find "$SRCDIR/hostTools" -type f ! -name '*.*' -exec chmod +x {} \; 2>/dev/null || true
+          find "$SRCDIR/bcmdrivers" -path "*/tools/*" -type f -exec chmod +x {} \; 2>/dev/null || true
 
       - name: Ensure Empty Include Dirs
         run: |
@@ -312,6 +313,7 @@ jobs:
           # 会导致 atf 目标直接 Error 127。
           echo "Ensuring hostTools binaries are executable..."
           find "$SRCDIR/hostTools" -type f ! -name '*.*' -exec chmod +x {} \; 2>/dev/null || true
+          find "$SRCDIR/bcmdrivers" -path "*/tools/*" -type f -exec chmod +x {} \; 2>/dev/null || true
 
           # checkver.pl 用 `automake --version` 取版本号，
           # 若 PATH 里工具链的 bison/shadow 导致找不到宿主 automake 会误报
