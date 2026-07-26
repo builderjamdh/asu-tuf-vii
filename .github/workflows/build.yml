@@ -610,9 +610,9 @@ jobs:
           fi
           fix_permissions
           populate_prebuilt
-          echo "=== Phase 2/2: retry failed targets (-j8) ==="
+          echo "=== Phase 2/2: retry failed targets (-j16) ==="
           set +e
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j8 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j16 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
           RESULT=${PIPESTATUS[0]}
           set -e
 
