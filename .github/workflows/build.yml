@@ -580,49 +580,25 @@ jobs:
           fi
 
           # ==============================
-          # 阶段1：-j8 中速全量构建 —— 内核及其模块可受益于多核，
-          # 同时可控的并行度降低 Broadcom Makefile 缺依赖声明导致
-          # 的竞态风险。-k 确保不因非关键包失败而中断。
+          # 单次全速构建 — 前置修复（prebuilt stubs / CONFIG_SITE /
+          # HOSTCFLAGS / 内核 config patch）已将已知阻断项全部消除，
+          # make -j16 直接全核编译到底，无需分段重试。
           # ==============================
           fix_permissions
           populate_prebuilt
           apply_kernel_conf_patch
-          echo "=== Phase 1/2: full build (-j8) ==="
+          echo "=== Build: single pass (-j16) ==="
           set +e
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j8 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
-          set -e
-
-          # ==============================
-          # 阶段2：-j16 全核补刀 —— Phase 1 已产出内核映像和大部分
-          # 库文件，依赖关系基本满足。此时 make 天然跳过已成功目标，
-          # 只编译 Phase 1 失败/遗漏的包，全核并行几乎无竞态。
-          # ==============================
-          # 阶段2前处理 busybox/内核配置弹窗：
-          # 如果阶段1 内核编译成功（存在 vmlinux），Phase 2 设
-          # KERN_TARGET=olddefconfig 跳过内核重编译防交互弹窗。
-          # 如果阶段1 失败导致内核没编出来，Phase 2 强制重新编内核。
-          if [ -f "$SRCDIR/targets/96764GW/vmlinux" ]; then
-            echo "Phase 1 内核存在，Phase 2 跳过内核编译"
-            export KERN_TARGET=olddefconfig
-          else
-            echo "Phase 1 未生成 vmlinux，Phase 2 强制全量编译内核"
-            unset KERN_TARGET
-          fi
-          fix_permissions
-          populate_prebuilt
-          echo "=== Phase 2/2: retry failed targets (-j16) ==="
-          set +e
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j16 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j16 -s 2>&1 | tee "$SRCDIR/build.log"
           RESULT=${PIPESTATUS[0]}
           set -e
 
           if [ "$RESULT" -ne 0 ]; then
-            echo "=== Build failed, extracting error lines ==="
+            echo "=== Build failed (exit $RESULT), extracting error lines ==="
             grep -nE "error:|Error [0-9]+|No such file or directory" "$SRCDIR/build.log" | tail -n 80
+          else
+            echo "Build succeeded (exit 0)"
           fi
-
-          echo "Build Phase 2 exit code: $RESULT (non-fatal)"
-          # 编译错误不阻断——只要 TRX 生成了就算成功
 
       - name: Validate Firmware
         if: always()
