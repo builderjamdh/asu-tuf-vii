@@ -428,6 +428,8 @@ jobs:
           for cfg in $(find . -name ".config" -path "*/router/*" 2>/dev/null); do
             sed -i 's/RTCONFIG_IPERF3=y/# RTCONFIG_IPERF3 is not set/' "$cfg" 2>/dev/null || true
           done
+          printf 'ac_cv_prog_cc_works=yes\nac_cv_prog_cc_cross=yes\nac_cv_prog_cxx_works=yes\nac_cv_prog_cxx_cross=yes\n' > /tmp/config.site
+          export CONFIG_SITE=/tmp/config.site
           rm -rf "$SRCDIR/targets/96764GW/fs.build" 2>/dev/null || true
           if [ -f release/src/router/iperf3/configure ]; then
             (cd release/src/router/iperf3 && autoreconf -i -f 2>/dev/null) || true
@@ -457,11 +459,11 @@ jobs:
           export KERN_TARGET=olddefconfig
           fix_permissions
           populate_prebuilt
-          echo "=== Phase 2/2: retry failed targets (-j16) ==="
+          echo "=== Phase 2/2: retry failed targets (-j8) ==="
           populate_prebuilt
-          echo "=== Phase 2/2: retry failed targets (-j16) ==="
+          echo "=== Phase 2/2: retry failed targets (-j8) ==="
           set +e
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j16 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j8 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
           RESULT=${PIPESTATUS[0]}
           set -e
 
