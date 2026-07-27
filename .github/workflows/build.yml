@@ -374,12 +374,14 @@ jobs:
             "ac_cv_prog_gxx=yes" \
             "ac_cv_prog_cc_g=yes" \
             "ac_cv_prog_cxx_g=yes" \
-            "ac_cv_env_CPPFLAGS_set=" \
+            "ac_cv_env_CPPFLAGS_set=set" \
             "ac_cv_env_CPPFLAGS_value=" \
-            "ac_cv_env_LDFLAGS_set=" \
+            "ac_cv_env_LDFLAGS_set=set" \
             "ac_cv_env_LDFLAGS_value=" \
-            "ac_cv_env_LIBS_set=" \
+            "ac_cv_env_LIBS_set=set" \
             "ac_cv_env_LIBS_value=" \
+            "ac_cv_env_CFLAGS_set=set" \
+            "ac_cv_env_CFLAGS_value=" \
             "ac_cv_build=x86_64-pc-linux-gnu" \
             "ac_cv_host=arm-buildroot-linux-gnueabi" \
             "ac_cv_target=arm-buildroot-linux-gnueabi" \
@@ -463,7 +465,7 @@ jobs:
           echo "=== Pass 2/2: parallel compile (-j16) ==="
           set +e
           FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j16 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
-          RESULT=${PIPESTATUS[0]}
+          RESULT=${PIPESTATUS[1]}
           set -e
 
           if [ "$RESULT" -ne 0 ]; then
