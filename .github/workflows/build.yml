@@ -382,6 +382,7 @@ jobs:
             "ac_cv_env_LIBS_value=" \
             "ac_cv_env_CFLAGS_set=set" \
             "ac_cv_env_CFLAGS_value=" \
+            "enable_option_checking=no" \
             "ac_cv_build=x86_64-pc-linux-gnu" \
             "ac_cv_host=arm-buildroot-linux-gnueabi" \
             "ac_cv_target=arm-buildroot-linux-gnueabi" \
@@ -491,9 +492,10 @@ jobs:
           # 用 make 命令行变量覆盖 export 变量。
           CONFIGURE_OVERRIDE="./configure --disable-option-checking LD=$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-ld --host=arm-buildroot-linux-gnueabi"
 
-          # enable_option_checking=no 在 CONFIG_SITE 中全局关闭
-          # autotools 的 "CFLAGS has changed" 环境检测。
+          # enable_option_checking=no 已写入 CONFIG_SITE（见上方 config.site 生成），
+          # 从全局层面关闭 autotools 的 "CFLAGS has changed" 环境检测。
           # 比 --disable-option-checking 更底层，适用于所有 autoconf 版本。
+          # CONFIGURE_OVERRIDE（上方）作为补充：对使用 $(CONFIGURE) 的包直接传 flag。
 
           # 自托管 runner 可能残留上次构建的 autotools 状态文件。
           # autoreconf 会在内部不带 CFLAGS 先跑一次 configure，
