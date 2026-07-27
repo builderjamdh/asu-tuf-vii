@@ -4178,7 +4178,7 @@ getdns/build/Makefile:
 	cmake -DCMAKE_TOOLCHAIN_FILE=crosscompiled.cmake \
 		-DCMAKE_INSTALL_PREFIX:PATH=/usr \
 		-DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_SKIP_RPATH=TRUE \
-		-DCMAKE_C_FLAGS="-Os -DNDEBUG -ffunction-sections -fdata-sections $(EXTRACFLAGS)" \
+		-DCMAKE_C_FLAGS="-Os -DNDEBUG -DOPENSSL_API_COMPAT=0x10100000L -ffunction-sections -fdata-sections $(EXTRACFLAGS)" \
 		-DCMAKE_EXE_LINKER_FLAGS="-Wl,--gc-sections $(EXTRALDFLAGS) $(if $(RTCONFIG_OPENSSL11),-lpthread,)" \
 		-DENABLE_STATIC=TRUE -DENABLE_SHARED=FALSE -DENABLE_GOST=FALSE \
 		-DBUILD_GETDNS_QUERY=FALSE \
@@ -7254,7 +7254,7 @@ hostapd-clean:
 $(WPA_SUPPLICANT_DIR)/wpa_supplicant/.config: $(WPA_SUPPLICANT_DIR)/wpa_supplicant/brcm.config
 	cp $(WPA_SUPPLICANT_DIR)/wpa_supplicant/brcm.config $(WPA_SUPPLICANT_DIR)/wpa_supplicant/.config;
 
-wpa_supplicant-2.7: libnl $(WPA_SUPPLICANT_DIR)/wpa_supplicant/.config $(if $(or $(HND_ROUTER_AX_6756),$(HND_ROUTER_BE_4916),$(BCM_502L07P2)),cevent_app)
+wpa_supplicant-2.7: nvram$(BCMEX) libnl $(WPA_SUPPLICANT_DIR)/wpa_supplicant/.config $(if $(or $(HND_ROUTER_AX_6756),$(HND_ROUTER_BE_4916),$(BCM_502L07P2)),cevent_app)
 	+$(MAKE) -C $(WPA_SUPPLICANT_DIR)/wpa_supplicant
 
 wpa_supplicant-2.7-install:
@@ -11033,7 +11033,7 @@ libpng/build/Makefile:
 	cmake -DCMAKE_TOOLCHAIN_FILE=crosscompiled.cmake \
 		-DCMAKE_INSTALL_PREFIX:PATH=/usr \
 		-DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_SKIP_RPATH=TRUE \
-		-DCMAKE_C_FLAGS="-Os -DNDEBUG -ffunction-sections -fdata-sections $(EXTRACFLAGS)" \
+		-DCMAKE_C_FLAGS="-Os -DNDEBUG -DOPENSSL_API_COMPAT=0x10100000L -ffunction-sections -fdata-sections $(EXTRACFLAGS)" \
 		-DCMAKE_EXE_LINKER_FLAGS="-Wl,--gc-sections $(EXTRALDFLAGS) -lm -L$(TOP)/zlib/ -lz" \
 		-DPNG_BUILD_ZLIB=ON \
 		-DZLIB_LIBRARY="$(STAGEDIR)/usr/lib/libz.so" \
@@ -11065,7 +11065,7 @@ qrencode/build/Makefile:
 	cmake -DCMAKE_TOOLCHAIN_FILE=crosscompiled.cmake \
 		-DCMAKE_INSTALL_PREFIX:PATH=/usr \
 		-DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_SKIP_RPATH=TRUE \
-		-DCMAKE_C_FLAGS="-Os -DNDEBUG -ffunction-sections -fdata-sections $(EXTRACFLAGS)" \
+		-DCMAKE_C_FLAGS="-Os -DNDEBUG -DOPENSSL_API_COMPAT=0x10100000L -ffunction-sections -fdata-sections $(EXTRACFLAGS)" \
 		-DCMAKE_EXE_LINKER_FLAGS="-Wl,--gc-sections $(EXTRALDFLAGS) -lm" \
 		-DBUILD_SHARED_LIBS=TRUE \
 		-DZLIB_LIBRARY="$(STAGEDIR)/usr/lib/libz.so" \
