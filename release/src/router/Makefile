@@ -8388,7 +8388,7 @@ avahi: expat-2.0.1 libdaemon avahi/Makefile
 	@$(SEP)
 	@$(MAKE) -j 8 -C $@
 
-avahi/Makefile: avahi/configure
+avahi/Makefile: avahi/configure expat-2.0.1 libdaemon
 	cd avahi && $(CONFIGURE) \
 		LDFLAGS="$(LDFLAGS) -L$(STAGEDIR)/usr/lib -ldl -lpthread $(EXTRA_LDFLAGS)" \
 		CFLAGS="-Os $(CFLAGS) -I$(STAGEDIR)/usr/include" \
