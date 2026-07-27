@@ -578,8 +578,8 @@ jobs:
           # Broadcom Makefile 缺少 config 生成 → 编译之间的依赖声明。
           # 两阶段：先跑 configure 生成配置文件，再全核编译。
           # -k 容忍 configure 阶段的竞态失败（阶段2会补齐）。
-          echo "=== Pass 1/2: configure + deps (-j16) ==="
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j16 -k -s \
+          echo "=== Pass 1/2: configure + deps (-j24) ==="
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j24 -k -s \
             CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee "$SRCDIR/build.log"
           # 阶段1 中 autoreconf → configure 的内部调用链会留下
           # 空值 config.status，导致同一个包的正式 configure 失败。
@@ -592,9 +592,9 @@ jobs:
           find release -type d -name autom4te.cache -exec rm -rf {} + 2>/dev/null || true
           # json-c 的 stamp-h1 是手动伪造的，重新 touch 确保不被误删
           touch release/src/router/json-c/stamp-h1 2>/dev/null || true
-          echo "=== Pass 2/2: parallel compile (-j24) ==="
+          echo "=== Pass 2/2: parallel compile (-j32) ==="
           set +e
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j24 -k -s \
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j32 -k -s \
             CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log"
           RESULT=${PIPESTATUS[1]}
           set -e
