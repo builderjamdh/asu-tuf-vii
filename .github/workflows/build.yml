@@ -485,10 +485,11 @@ jobs:
           export LD_LIBRARY_PATH="$TC_PATH/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
           export TOOLCHAIN_BASE="/opt/toolchains"
 
-          # enable_option_checking=no 作为环境变量传给每个 configure，
-          # 全局关闭 "CFLAGS has changed since the previous run" 检测。
-          # 放在 CONFIG_SITE 里无效——它是 configure 命令行选项。
-          export enable_option_checking=no
+          # platform.mak 定义 CONFIGURE := ./configure LD=... --host=...
+          # 覆盖它注入 --disable-option-checking，从源头关闭所有
+          # autotools 包的 "CFLAGS has changed" 环境检测。
+          # 用 make 命令行变量覆盖 export 变量。
+          CONFIGURE_OVERRIDE="./configure --disable-option-checking LD=$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-ld --host=arm-buildroot-linux-gnueabi"
 
           # enable_option_checking=no 在 CONFIG_SITE 中全局关闭
           # autotools 的 "CFLAGS has changed" 环境检测。
@@ -576,7 +577,8 @@ jobs:
           # 两阶段：先跑 configure 生成配置文件，再全核编译。
           # -k 容忍 configure 阶段的竞态失败（阶段2会补齐）。
           echo "=== Pass 1/2: configure + deps (-j16) ==="
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j16 -k -s 2>&1 | tee "$SRCDIR/build.log"
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j16 -k -s \
+            CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee "$SRCDIR/build.log"
           # 阶段1 中 autoreconf → configure 的内部调用链会留下
           # 空值 config.status，导致同一个包的正式 configure 失败。
           # 删除它们让阶段2的 configure 从干净状态重试。
@@ -590,7 +592,8 @@ jobs:
           touch release/src/router/json-c/stamp-h1 2>/dev/null || true
           echo "=== Pass 2/2: parallel compile (-j24) ==="
           set +e
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j24 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j24 -k -s \
+            CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log"
           RESULT=${PIPESTATUS[1]}
           set -e
 
