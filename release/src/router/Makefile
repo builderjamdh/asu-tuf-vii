@@ -3496,7 +3496,7 @@ calc_nvram: shared
 conntrack: libnfnetlink-$(NETLINK_LIB_VER) libmnl-1.0.4 libnetfilter_conntrack-1.0.7 libnetfilter_cttimeout-1.0.0 conntrack/Makefile
 	$(MAKE) -C conntrack
 
-conntrack/Makefile:
+conntrack/Makefile: libnfnetlink-$(NETLINK_LIB_VER) libmnl-1.0.4
 	(cd conntrack && autoreconf -i -f)
 	$(MAKE) conntrack-configure
 
@@ -5942,7 +5942,7 @@ pstree-clean:
 libcodb/stamp-h1:
 	touch $@
 
-libcodb: libcodb/stamp-h1 sqlite3
+libcodb: libcodb/stamp-h1 sqlite3 json-c
 	@$(SEP)
 	@$(MAKE) -C libcodb CC=$(CC)
 
