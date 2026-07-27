@@ -637,17 +637,13 @@ jobs:
             echo "  libgpg-error config.h pre-generated"
           fi
 
-          # dropbear: configure 因 varargs.h/其他原因返回 77。
-          # 直接预生成 config.h。
-          echo "=== Pre-generating dropbear config.h ==="
-          if [ -f "release/src/router/dropbear/config.h.in" ]; then
-            cat > "release/src/router/dropbear/config.h" << 'DBEOF'
-          #define LOCALOPTIONS_H_EXISTS 1
-          #define HAVE_CRYPT 1
-          #define HAVE_SYS_RANDOM_H 1
-          DBEOF
-            touch "release/src/router/dropbear/stamp-h1" 2>/dev/null || true
-            echo "  dropbear config.h pre-generated"
+          # dropbear: configure 检测到 varargs.h 问题返回 77。
+          # 仅预复制 config.h.in→config.h，不 touch stamp-h1，
+          # 这样 configure 检测到 config.h 已存在会简化部分测试。
+          echo "=== Pre-copy dropbear config.h ==="
+          if [ -f "release/src/router/dropbear/config.h.in" ] && [ ! -f "release/src/router/dropbear/config.h" ]; then
+            cp "release/src/router/dropbear/config.h.in" "release/src/router/dropbear/config.h"
+            echo "  dropbear config.h pre-copied"
           fi
 
           # getdns: cmake cross-compile generate 失败。预创建简单 Makefile。
@@ -660,28 +656,6 @@ jobs:
           \t@echo "getdns: skipped (pre-built stub)"
           GEOF
             echo "  getdns stub Makefile created"
-          fi
-
-          # dropbear/flac/db-4.8.30: 最后的顽固包，pre-gen 跳过。
-          echo "=== Pre-gen stamp-h1 for final fragile packages ==="
-          for pkg in flac libgdbm libevent-2.0.21 phddns inadyn; do
-            d="release/src/router/$pkg"
-            [ -d "$d" ] && touch "$d/stamp-h1" 2>/dev/null && echo "  $pkg stamp-h1"
-          done
-          # db-4.8.30 needs stamp-h1 in Broadcom SDK path
-          DB48="release/src-rt-5.04behnd.4916/bcmdrivers/broadcom/net/wl/bcm96764/main/src/router/db-4.8.30/build_unix"
-          [ -d "$DB48" ] && touch "$DB48/stamp-h1" 2>/dev/null && echo "  db-4.8.30 stamp-h1"
-
-          # dropbear: 预生成 config.h 但不是空 Makefile——保留实际构建。
-          echo "=== Pre-generating dropbear config.h ==="
-          if [ -f "release/src/router/dropbear/config.h.in" ] && [ ! -f "release/src/router/dropbear/config.h" ]; then
-            cat > "release/src/router/dropbear/config.h" << 'DBEOF'
-          #define LOCALOPTIONS_H_EXISTS 1
-          #define HAVE_CRYPT 1
-          #define HAVE_SYS_RANDOM_H 1
-          DBEOF
-            touch "release/src/router/dropbear/stamp-h1" 2>/dev/null || true
-            echo "  dropbear config.h pre-generated"
           fi
 
           # Broadcom Makefile 缺少 config 生成 → 编译之间的依赖声明。
