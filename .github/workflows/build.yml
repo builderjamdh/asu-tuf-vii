@@ -469,22 +469,30 @@ jobs:
           export CXX="ccache arm-buildroot-linux-gnueabi-g++"
           export CPP="ccache arm-buildroot-linux-gnueabi-cpp"
 
+          # 自托管 runner 可能残留上次构建的 autotools 状态文件。
+          # autoreconf 会在内部不带 CFLAGS 先跑一次 configure，
+          # 留下空值 config.status；紧接着 Makefile 带 CFLAGS
+          # 调用真正 configure 时 autotools 检测到环境变化直接报错。
+          # 清除所有残留让每次 configure 从干净状态开始。
+          echo "=== Pre-build: clean stale autotools state ==="
+          find release/src/router -name config.status -delete 2>/dev/null || true
+          find release/src/router -name config.cache -delete 2>/dev/null || true
+          find release/src/router -name config.log -delete 2>/dev/null || true
+          find release/src/router -type d -name autom4te.cache -exec rm -rf {} + 2>/dev/null || true
+
           # Broadcom Makefile 缺少 config 生成 → 编译之间的依赖声明。
           # 两阶段：先跑 configure 生成配置文件，再全核编译。
           # -k 容忍 configure 阶段的竞态失败（阶段2会补齐）。
           echo "=== Pass 1/2: configure + deps (-j16) ==="
           FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j16 -k -s 2>&1 | tee "$SRCDIR/build.log"
-          # 两阶段构建中，阶段1的 configure 会在 config.status 里缓存
-          # 环境变量（CFLAGS/LDFLAGS/LIBS/CPPFLAGS）的快照。
-          # 阶段2若因依赖变动重新触发 configure，autotools 检测到
-          # 环境变量从空值变为 Makefile 传入的具体值，直接报错退出，
-          # 导致 stamp-h1 永远无法生成（json-c、lldpd 等均受此影响）。
-          # 删除所有 config.status / config.cache 让每次 configure
-          # 都从干净状态开始，彻底避开这个检测。
+          # 阶段1 中 autoreconf → configure 的内部调用链会留下
+          # 空值 config.status，导致同一个包的正式 configure 失败。
+          # 删除它们让阶段2的 configure 从干净状态重试。
           echo "=== Cleaning stale autotools caches between passes ==="
           find release/src/router -name config.status -delete 2>/dev/null || true
           find release/src/router -name config.cache -delete 2>/dev/null || true
           find release/src/router -name config.log -delete 2>/dev/null || true
+          find release/src/router -type d -name autom4te.cache -exec rm -rf {} + 2>/dev/null || true
           echo "=== Pass 2/2: parallel compile (-j24) ==="
           set +e
           FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j24 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
