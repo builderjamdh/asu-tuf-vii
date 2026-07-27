@@ -79,8 +79,8 @@ $(info nothere-03)
 export PLATFORM_ARCH := arm-glibc
 export CROSS_COMPILE := /opt/toolchains/crosstools-arm-gcc-5.3-linux-4.1-glibc-2.22-binutils-2.25/usr/bin/arm-buildroot-linux-gnueabi-
 export CROSS_COMPILER := $(CROSS_COMPILE)
-export CONFIGURE := ./configure LD=$(CROSS_COMPILE)ld --host=arm-buildroot-linux-gnueabi
-export CONFIGURE_64 := ./configure LD=$(CROSS_COMPILE_64)ld --host=aarch64-buildroot-linux-gnu 
+export CONFIGURE := ./configure --disable-option-checking LD=$(CROSS_COMPILE)ld --host=arm-buildroot-linux-gnueabi
+export CONFIGURE_64 := ./configure --disable-option-checking LD=$(CROSS_COMPILE_64)ld --host=aarch64-buildroot-linux-gnu 
 export HOSTCONFIG := linux-armv4 -DL_ENDIAN -march=armv8-a -fomit-frame-pointer -mabi=aapcs-linux -marm -ffixed-r8 -msoft-float -D__ARM_ARCH_8A__
 export HOSTCONFIG_64 := linux-aarch64 -DL_ENDIAN -march=armv8-a -fomit-frame-pointer -mabi=lp64 -ffixed-r8 -D__ARM_ARCH_8A__
 export TOP_PLATFORM := $(SRCBASE)/router
