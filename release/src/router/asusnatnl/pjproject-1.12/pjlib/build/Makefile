@@ -95,7 +95,7 @@ depend: ../include/pj/config_site.h
 dep: depend
 
 pjlib: ../include/pj/config_site.h
-	$(MAKE) -f $(RULES_MAK) APP=PJLIB app=pjlib $(PJLIB_LIB)
+	$(MAKE) -f $(RULES_MAK) APP=PJLIB app=pjlib $(PJLIB_LIB) AR="$(AR)" CC="$(CC)" RANLIB="$(RANLIB)"
 
 ../include/pj/config_site.h:
 	touch ../include/pj/config_site.h
