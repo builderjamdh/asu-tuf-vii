@@ -45,7 +45,7 @@ jobs:
             libssl-dev liblzma-dev liblzo2-dev python3 rsync wget curl unzip xxd \
             bc cpio lzop lz4 xz-utils libelf-dev libncurses-dev \
             libreadline-dev uuid-dev libuuid1 gperf libltdl-dev automake cmake \
-            libcurl4-openssl-dev libxml2-dev git-lfs
+            libcurl4-openssl-dev libxml2-dev git-lfs ccache
           git lfs install
           git lfs pull
           # autopoint 可能在 gettext 包里也可能独立，用 || true 兜底
@@ -457,11 +457,23 @@ jobs:
           fi
 
           # ---- 构建 ----
+          # ccache 缓存编译器输出，跨 CI 运行复用。自托管 runner 上
+          # 缓存目录持久化，第二次构建起可大幅加速 C/C++ 编译。
+          export CCACHE_DIR="/opt/ccache"
+          sudo mkdir -p "$CCACHE_DIR"
+          sudo chmod a+rwx "$CCACHE_DIR"
+          ccache -M 20G
+          ccache -z  # 清零本次统计
+          # 通过环境变量让 make 内的编译全部经由 ccache
+          export CC="ccache arm-buildroot-linux-gnueabi-gcc"
+          export CXX="ccache arm-buildroot-linux-gnueabi-g++"
+          export CPP="ccache arm-buildroot-linux-gnueabi-cpp"
+
           # Broadcom Makefile 缺少 config 生成 → 编译之间的依赖声明。
-          # 先 -j4 跑一趟生成配置文件和基础依赖（-k 容忍失败），
+          # 先 -j8 跑一趟生成配置文件和基础依赖（-k 容忍失败），
           # 再 -j16 全核编译（make 天然跳过已成功目标）。
-          echo "=== Pass 1/2: configure + deps (-j4) ==="
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j4 -k -s 2>&1 | tee "$SRCDIR/build.log"
+          echo "=== Pass 1/2: configure + deps (-j8) ==="
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j8 -k -s 2>&1 | tee "$SRCDIR/build.log"
           # 两阶段构建中，阶段1的 configure 会在 config.status 里缓存
           # 环境变量（CFLAGS/LDFLAGS/LIBS/CPPFLAGS）的快照。
           # 阶段2若因依赖变动重新触发 configure，autotools 检测到
@@ -485,6 +497,8 @@ jobs:
           else
             echo "Build succeeded (exit 0)"
           fi
+          echo "=== ccache stats ==="
+          ccache -s
 
       - name: Validate Firmware
         if: always()
