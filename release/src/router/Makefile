@@ -4609,7 +4609,7 @@ vsftpd-install:
 	install -D vsftpd/vsftpd $(INSTALLDIR)/vsftpd/usr/sbin/vsftpd
 	$(STRIP) -s $(INSTALLDIR)/vsftpd/usr/sbin/vsftpd
 
-vsftpd-3.x: $(ftp_dep)
+vsftpd-3.x: nvram$(BCMEX) $(ftp_dep)
 	@$(SEP)
 ifeq ($(RTCONFIG_FTP_SSL),y)
 	-cp vsftpd-3.x/builddefs-ssl.h vsftpd-3.x/builddefs.h
@@ -7239,7 +7239,7 @@ libnl-clean:
 $(HOSTAPD_DIR)/hostapd/.config: $(HOSTAPD_DIR)/hostapd/brcm.config
 	cp $(HOSTAPD_DIR)/hostapd/brcm.config $(HOSTAPD_DIR)/hostapd/.config;
 
-hostapd: libnl openssl $(HOSTAPD_DIR)/hostapd/.config
+hostapd: libnl openssl nvram$(BCMEX) $(HOSTAPD_DIR)/hostapd/.config
 	+$(MAKE) -C $(HOSTAPD_DIR)/hostapd
 
 hostapd-install:
@@ -8691,14 +8691,14 @@ EMAIL_CFLAGS_EXT += -fcommon
 endif
 
 ifeq ($(RTCONFIG_NOTIFICATION_CENTER),y)
-email-3.1.3/Makefile: openssl
+email-3.1.3/Makefile: openssl sqlite nt_center
 	cd $(TOP)/email-3.1.3 && \
 	$(CONFIGURE) --with-ssl --sysconfdir=/etc \
 		CFLAGS="-Os -Wall -I$(STAGEDIR)/usr/include -I$(TOP)/nt_center/lib -I$(TOP)/sqlite $(EMAIL_CFLAGS_EXT)" \
 		LDFLAGS="-L$(STAGEDIR)/usr/lib -L$(TOP)/nt_center/lib -L$(TOP)/sqlite/.libs" \
 		LIBS="-lnt -lsqlite3 -lpthread -lcrypto -lssl $(if $(or $(RTCONFIG_QCA),$(RTCONFIG_RALINK_MT7622)),-ldl,)"
 else
-email-3.1.3/Makefile: openssl
+email-3.1.3/Makefile: openssl sqlite nt_center
 	cd $(TOP)/email-3.1.3 && \
 	$(CONFIGURE) --with-ssl --sysconfdir=/etc \
 		CFLAGS="-Os -Wall -I$(STAGEDIR)/usr/include $(EMAIL_CFLAGS_EXT)" \
