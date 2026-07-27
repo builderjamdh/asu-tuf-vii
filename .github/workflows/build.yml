@@ -427,8 +427,12 @@ jobs:
 
           # ---- 构建前最终验证 ----
           WLDIR="$SRCDIR/bcmdrivers/broadcom/net/wl"
+          # 清除之前构建残留的 bcm9* 普通目录（ln -sf 不会覆盖目录）
+          find "$WLDIR" -maxdepth 1 -name 'bcm9*' ! -type l -exec rm -rf {} + 2>/dev/null || true
+          # bcm96764 必须是符号链接 -> impl105
           if [ ! -L "$WLDIR/bcm96764" ]; then
             ln -sf impl105 "$WLDIR/bcm96764"
+            echo "  Created bcm96764 -> impl105"
           fi
           TESTFILE="$WLDIR/bcm96764/main/src/router/busybox-1.24.1/busybox-1.24.1/config_base"
           if [ -f "$TESTFILE" ]; then
