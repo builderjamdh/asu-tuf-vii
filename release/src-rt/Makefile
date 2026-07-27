@@ -1532,7 +1532,7 @@ define RouterOptions
 	fi; \
 	if [ "$(AWSIOT)" = "y" ]; then \
 		sed -i "/RTCONFIG_AWSIOT/d" $(1); \
-		echo "RTCONFIG_AWSIOT=y" >>$(1); \
+		echo "# RTCONFIG_AWSIOT is not set" >>$(1); \
 	fi;
 	if [ "$(REALTEK)" = "y" ]; then \
 		sed -i "/RTCONFIG_REALTEK/d" $(1); \
@@ -4105,8 +4105,6 @@ define RouterOptions
 		if [ "$(findstring RP-, $(BUILD_NAME))" != "RP-" ]; then \
 			sed -i "/RTCONFIG_ACCOUNT_BINDING/d" $(1); \
 			echo "RTCONFIG_ACCOUNT_BINDING=y" >>$(1); \
-			sed -i "/RTCONFIG_AWSIOT/d" $(1); \
-			echo "RTCONFIG_AWSIOT=y" >>$(1); \
 		fi; \
 		sed -i "/RTCONFIG_NOTIFICATION_CENTER/d" $(1); \
 		echo "RTCONFIG_NOTIFICATION_CENTER=y" >>$(1); \
