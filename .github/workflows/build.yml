@@ -456,12 +456,10 @@ jobs:
 
           # ---- 构建 ----
           # Broadcom Makefile 缺少 config 生成 → 编译之间的依赖声明。
-          # 并行编译时编译先于配置生成（version.h / autoconf.h 等），
-          # 直接 -j16 会有大量 "No such file" 的竞态错误。
-          # 解决：先串行跑一趟让配置文件和基础依赖全部就位（-k 容忍非关键失败），
-          # 再全核编译（make 天然跳过已成功目标，只补编缺失的）。
-          echo "=== Pass 1/2: configure + deps (-j1) ==="
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j1 -k -s 2>&1 | tee "$SRCDIR/build.log"
+          # 先 -j4 跑一趟生成配置文件和基础依赖（-k 容忍失败），
+          # 再 -j16 全核编译（make 天然跳过已成功目标）。
+          echo "=== Pass 1/2: configure + deps (-j4) ==="
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j4 -k -s 2>&1 | tee "$SRCDIR/build.log"
           echo "=== Pass 2/2: parallel compile (-j16) ==="
           set +e
           FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j16 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
