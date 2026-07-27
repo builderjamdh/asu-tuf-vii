@@ -1,5 +1,9 @@
-override LIBDIR = ../lib
-override BINDIR = ../bin
+ifeq ($(LIBDIR),)
+LIBDIR = ../lib
+endif
+ifeq ($(BINDIR),)
+BINDIR = ../bin
+endif
 
 #
 # The full path of output lib file (e.g. ../lib/libapp.a).

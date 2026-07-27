@@ -14,7 +14,7 @@ ARCH=MIPS
 endif
 
 all: pjproject-1.12/stamp-h1-$(ARCH)
-	$(MAKE) -C pjproject-1.12 -j1 CROSS_COMPILE=$(CROSS_COMPILE) UCLIBC_NG=$(UCLIBC_NG)
+	$(MAKE) -C pjproject-1.12 -j1 CROSS_COMPILE=$(CROSS_COMPILE) UCLIBC_NG=$(UCLIBC_NG) LIBDIR= BINDIR=
 	$(MAKE) -C udt os=LINUX arch=$(ARCH)
 	$(MAKE) -C natnl linux-lib router=yes RTCONFIG_SW_HW_AUTH=$(RTCONFIG_SW_HW_AUTH)
 #	$(MAKE) -C natnl/msvc_prjs/asusnatnl_test
