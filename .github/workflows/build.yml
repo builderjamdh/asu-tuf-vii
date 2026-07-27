@@ -35,32 +35,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          lfs: true
-
-      - name: Verify Checkout Integrity
-        run: |
-          # LFS 指针文件只有几十字节（如 `version https://git-lfs.github.com/...`），
-          # 如果不是真正的二进制，说明 LFS 没拉下来，后续 make 会直接报错。
-          echo "Checking for unresolved Git LFS pointers..."
-          if git lfs ls-files -l 2>/dev/null | grep -q '\*'; then
-            BAD=$(git lfs ls-files -l 2>/dev/null | grep '\*' | wc -l)
-            echo "!! $BAD LFS files are still pointers, pulling..."
-            git lfs pull
-          else
-            echo "All LFS files resolved"
-          fi
-          # 关键配置文件必须存在
-          for f in \
-            release/src/router/config_base \
-            release/src/router/busybox-1.24.1/busybox-1.24.1/config_base \
-          ; do
-            if [ -f "$f" ]; then
-              echo "  OK: $f"
-            else
-              echo "  !! MISSING: $f"
-            fi
-          done
 
       - name: Install Dependencies
         run: |
@@ -71,9 +45,25 @@ jobs:
             libssl-dev liblzma-dev liblzo2-dev python3 rsync wget curl unzip xxd \
             bc cpio lzop lz4 xz-utils libelf-dev libncurses-dev \
             libreadline-dev uuid-dev libuuid1 gperf libltdl-dev automake cmake \
-            libcurl4-openssl-dev libxml2-dev
+            libcurl4-openssl-dev libxml2-dev git-lfs
+          git lfs install
+          git lfs pull
           # autopoint 可能在 gettext 包里也可能独立，用 || true 兜底
           sudo apt-get install -y -qq autopoint 2>/dev/null || true
+
+      - name: Verify Checkout Integrity
+        run: |
+          echo "Checking critical files..."
+          for f in \
+            release/src/router/config_base \
+            release/src/router/busybox-1.24.1/busybox-1.24.1/config_base \
+          ; do
+            if [ -f "$f" ]; then
+              echo "  OK: $f"
+            else
+              echo "  !! MISSING: $f"
+            fi
+          done
 
       - name: Cache Toolchain
         id: cache-toolchain
