@@ -485,9 +485,9 @@ jobs:
           find release/src/router -name config.status -delete 2>/dev/null || true
           find release/src/router -name config.cache -delete 2>/dev/null || true
           find release/src/router -name config.log -delete 2>/dev/null || true
-          echo "=== Pass 2/2: parallel compile (-j32) ==="
+          echo "=== Pass 2/2: parallel compile (-j24) ==="
           set +e
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j32 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j24 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
           RESULT=${PIPESTATUS[1]}
           set -e
 
