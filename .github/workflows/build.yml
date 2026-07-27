@@ -480,12 +480,17 @@ jobs:
           # autoreconf 会在内部不带 CFLAGS 先跑一次 configure，
           # 留下空值 config.status；紧接着 Makefile 带 CFLAGS
           # 调用真正 configure 时 autotools 检测到环境变化直接报错。
-          # 清除所有残留让每次 configure 从干净状态开始。
+          # 清除 release/ 下所有残留让每次 configure 从干净状态开始。
+          # 注意：必须覆盖整个 release/ 树，不能只清 release/src/router/，
+          # 因为 router-sysdep/objs、components/opensource 等也有 configure。
           echo "=== Pre-build: clean stale autotools state ==="
-          find release/src/router -name config.status -delete 2>/dev/null || true
-          find release/src/router -name config.cache -delete 2>/dev/null || true
-          find release/src/router -name config.log -delete 2>/dev/null || true
-          find release/src/router -type d -name autom4te.cache -exec rm -rf {} + 2>/dev/null || true
+          find release -name config.status -delete 2>/dev/null || true
+          find release -name config.cache -delete 2>/dev/null || true
+          find release -name config.log -delete 2>/dev/null || true
+          find release -type d -name autom4te.cache -exec rm -rf {} + 2>/dev/null || true
+          # 也清理 config.h 等生成的头文件（会在 configure 时重新生成）
+          find release -name stamp-h1 -delete 2>/dev/null || true
+          echo "=== Pre-build cleanup done ==="
 
           # Broadcom Makefile 缺少 config 生成 → 编译之间的依赖声明。
           # 两阶段：先跑 configure 生成配置文件，再全核编译。
@@ -496,10 +501,10 @@ jobs:
           # 空值 config.status，导致同一个包的正式 configure 失败。
           # 删除它们让阶段2的 configure 从干净状态重试。
           echo "=== Cleaning stale autotools caches between passes ==="
-          find release/src/router -name config.status -delete 2>/dev/null || true
-          find release/src/router -name config.cache -delete 2>/dev/null || true
-          find release/src/router -name config.log -delete 2>/dev/null || true
-          find release/src/router -type d -name autom4te.cache -exec rm -rf {} + 2>/dev/null || true
+          find release -name config.status -delete 2>/dev/null || true
+          find release -name config.cache -delete 2>/dev/null || true
+          find release -name config.log -delete 2>/dev/null || true
+          find release -type d -name autom4te.cache -exec rm -rf {} + 2>/dev/null || true
           echo "=== Pass 2/2: parallel compile (-j24) ==="
           set +e
           FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j24 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
