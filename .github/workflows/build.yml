@@ -469,6 +469,13 @@ jobs:
           export CXX="ccache arm-buildroot-linux-gnueabi-g++"
           export CPP="ccache arm-buildroot-linux-gnueabi-cpp"
 
+          # autoreconf -f 会在内部不带 CFLAGS 先跑一次 configure，
+          # 留下空值 config.status；紧接着 Makefile 带 CFLAGS 调用
+          # 真正的 configure 时 autotools 检测到环境变化直接报错。
+          # NOCONFIGURE=1 阻止 autoreconf 内部跑 configure，只让
+          # Makefile 的 $(CONFIGURE) 调用带正确 CFLAGS 跑一次。
+          export NOCONFIGURE=1
+
           # 自托管 runner 可能残留上次构建的 autotools 状态文件。
           # autoreconf 会在内部不带 CFLAGS 先跑一次 configure，
           # 留下空值 config.status；紧接着 Makefile 带 CFLAGS
