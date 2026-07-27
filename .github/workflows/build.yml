@@ -331,6 +331,7 @@ jobs:
           # on the host, which fails for an ARM cross-compiler.
           SYSROOT=$("$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-gcc" -print-sysroot 2>/dev/null || echo "")
           printf '%s\n' \
+            "ac_precious_vars=" \
             "ac_cv_prog_cc_works=yes" \
             "ac_cv_prog_cc_cross=yes" \
             "ac_cv_prog_cxx_works=yes" \
@@ -481,24 +482,20 @@ jobs:
           # NOCONFIGURE=1 阻止 autoreconf 内部跑 configure。
           export NOCONFIGURE=1
 
-          # enable_option_checking=no 必须在环境变量中设置，不能只放 config.site。
-          # autoconf 在加载 config.site 之前就已经通过 _AC_INIT_PARSE_ARGS
-          # 决定了是否做环境检测；只有环境变量能在 configure 启动前生效。
-          export enable_option_checking=no
-
           # 补上官方 README 要求的 LD_LIBRARY_PATH 和 TOOLCHAIN_BASE
           export LD_LIBRARY_PATH="$TC_PATH/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
           export TOOLCHAIN_BASE="/opt/toolchains"
 
           # platform.mak 定义 CONFIGURE := ./configure LD=... --host=...
-          # 覆盖它注入 --disable-option-checking，从源头关闭所有
-          # autotools 包的 "CFLAGS has changed" 环境检测。
-          # 用 make 命令行变量覆盖 export 变量。
+          # CONFIGURE_OVERRIDE 覆盖它注入 --disable-option-checking，处理
+          # configure 命令行 unrecognized-options 检查。
+          # "CFLAGS has changed" 的缓存一致性检查由 config.site 中
+          # ac_precious_vars="" 处理（见上方 config.site 生成）。
           CONFIGURE_OVERRIDE="./configure --disable-option-checking LD=$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-ld --host=arm-buildroot-linux-gnueabi"
 
-          # 环境变量 enable_option_checking=no（上方 export）从进程级全局关闭
-          # autotools 的环境检测。覆盖 autoreconf 内部调用、config.status --recheck
-          # 等所有路径。CONFIGURE_OVERRIDE 作为补充：对使用 $(CONFIGURE) 的包直接传 flag。
+          # config.site 中的 ac_precious_vars="" 直接从源头跳过 autotools
+          # 的缓存一致性检查循环——该循环不受 enable_option_checking 或
+          # --disable-option-checking 控制，是 configure 脚本内硬编码的。
 
           # 自托管 runner 可能残留上次构建的 autotools 状态文件。
           # autoreconf 会在内部不带 CFLAGS 先跑一次 configure，
