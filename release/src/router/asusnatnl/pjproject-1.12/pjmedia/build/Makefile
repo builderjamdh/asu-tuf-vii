@@ -71,8 +71,8 @@ export PJMEDIA_OBJS += $(OS_OBJS) $(M_OBJS) $(CC_OBJS) $(HOST_OBJS) \
 			sdp.o sdp_cmp.o sdp_neg.o session.o silencedet.o \
 			sound_legacy.o sound_port.o stereo_port.o \
 			stream.o natnl_stream.o tonegen.o transport_adapter_sample.o \
-			transport_ice.o transport_loop.o transport_sctp.o \
-			transport_srtp.o transport_dtls.o transport_udp.o transport_tcp.o\
+			transport_ice.o transport_loop.o \
+			transport_srtp.o transport_udp.o transport_tcp.o\
 			wav_player.o wav_playlist.o wav_writer.o wave.o \
 			wsola.o
 
