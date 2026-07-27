@@ -53,7 +53,9 @@ jobs:
 
       - name: Verify Checkout Integrity
         run: |
-          echo "Checking critical files..."
+          echo "=== LFS status ==="
+          git lfs ls-files -l 2>/dev/null | grep '\*' && echo "WARNING: unresolved LFS pointers above" || echo "All LFS files resolved"
+          echo "=== Critical files ==="
           for f in \
             release/src/router/config_base \
             release/src/router/busybox-1.24.1/busybox-1.24.1/config_base \
@@ -64,6 +66,33 @@ jobs:
               echo "  !! MISSING: $f"
             fi
           done
+          echo "=== Key symlinks ==="
+          # 确保 impl105 内的核心符号链接正确
+          verify_symlink() {
+            local link="$1" target="$2"
+            if [ -L "$link" ]; then
+              local cur; cur=$(readlink "$link")
+              if [ "$cur" != "$target" ]; then
+                echo "  Fixing $link: $cur -> $target"
+                ln -sf "$target" "$link"
+              else
+                echo "  OK: $link -> $target"
+              fi
+            else
+              echo "  Creating $link -> $target"
+              if [ -e "$link" ]; then rm -rf "$link"; fi
+              ln -sf "$target" "$link"
+            fi
+          }
+          verify_symlink "$SRCDIR/bcmdrivers/broadcom/net/wl/impl105/main/src/router" \
+                         "../../../../../../../../src/router"
+          verify_symlink "$SRCDIR/bcmdrivers/broadcom/net/wl/impl105/main/src/router-sysdep" \
+                         "../../../../../../../../src-rt-5.04behnd.4916/router-sysdep"
+          verify_symlink "$SRCDIR/bcmdrivers/broadcom/net/wl/impl105/main/src/kernel" \
+                         "../../../../../../../kernel"
+          # 清理可能残留的 bcm9* 链接（让 make 重建）
+          find "$SRCDIR/bcmdrivers/broadcom/net/wl" -maxdepth 1 -name 'bcm9*' -type l -delete 2>/dev/null || true
+          echo "  Cleaned stale bcm9* links"
 
       - name: Cache Toolchain
         id: cache-toolchain
@@ -216,43 +245,6 @@ jobs:
           sudo install -d /usr/local/bin
           printf '#!/bin/sh\nexit 0\n' | sudo tee /usr/local/bin/repo > /dev/null
           sudo chmod +x /usr/local/bin/repo
-
-      - name: Fix Git Symlinks
-        run: |
-          # self-hosted runner 可能因 git config / filesystem 等原因
-          # 没有正确还原符号链接。验证并修复关键链接。
-          echo "Verifying key symlinks..."
-          verify_symlink() {
-            local link="$1" target="$2"
-            if [ -L "$link" ]; then
-              local cur; cur=$(readlink "$link")
-              if [ "$cur" != "$target" ]; then
-                echo "  Fixing $link: $cur -> $target"
-                ln -sf "$target" "$link"
-              fi
-            else
-              echo "  Creating $link -> $target"
-              if [ -e "$link" ]; then rm -rf "$link"; fi
-              ln -sf "$target" "$link"
-            fi
-          }
-          # bcm96764 在 make 时自动创建，但确保 impl105 内链正确
-          verify_symlink "$SRCDIR/bcmdrivers/broadcom/net/wl/impl105/main/src/router" \
-                         "../../../../../../../../src/router"
-          verify_symlink "$SRCDIR/bcmdrivers/broadcom/net/wl/impl105/main/src/router-sysdep" \
-                         "../../../../../../../../src-rt-5.04behnd.4916/router-sysdep"
-          verify_symlink "$SRCDIR/bcmdrivers/broadcom/net/wl/impl105/main/src/kernel" \
-                         "../../../../../../../kernel"
-          # busbox config 源文件必须存在
-          for f in \
-            "$SRCDIR/../src/router/busybox-1.24.1/busybox-1.24.1/config_base" \
-            "$SRCDIR/../src/router/config_base" \
-          ; do
-            if [ ! -f "$f" ]; then
-              echo "!! Missing critical file: $f"
-              echo "!! Check that git checkout is complete (no LFS pointers, no sparse checkout)"
-            fi
-          done
 
       - name: Fix Script Permissions
         run: |
