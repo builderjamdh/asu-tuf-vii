@@ -382,7 +382,6 @@ jobs:
             "ac_cv_env_LIBS_value=" \
             "ac_cv_env_CFLAGS_set=set" \
             "ac_cv_env_CFLAGS_value=" \
-            "enable_option_checking=no" \
             "ac_cv_build=x86_64-pc-linux-gnu" \
             "ac_cv_host=arm-buildroot-linux-gnueabi" \
             "ac_cv_target=arm-buildroot-linux-gnueabi" \
@@ -482,6 +481,11 @@ jobs:
           # NOCONFIGURE=1 阻止 autoreconf 内部跑 configure。
           export NOCONFIGURE=1
 
+          # enable_option_checking=no 必须在环境变量中设置，不能只放 config.site。
+          # autoconf 在加载 config.site 之前就已经通过 _AC_INIT_PARSE_ARGS
+          # 决定了是否做环境检测；只有环境变量能在 configure 启动前生效。
+          export enable_option_checking=no
+
           # 补上官方 README 要求的 LD_LIBRARY_PATH 和 TOOLCHAIN_BASE
           export LD_LIBRARY_PATH="$TC_PATH/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
           export TOOLCHAIN_BASE="/opt/toolchains"
@@ -492,10 +496,9 @@ jobs:
           # 用 make 命令行变量覆盖 export 变量。
           CONFIGURE_OVERRIDE="./configure --disable-option-checking LD=$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-ld --host=arm-buildroot-linux-gnueabi"
 
-          # enable_option_checking=no 已写入 CONFIG_SITE（见上方 config.site 生成），
-          # 从全局层面关闭 autotools 的 "CFLAGS has changed" 环境检测。
-          # 比 --disable-option-checking 更底层，适用于所有 autoconf 版本。
-          # CONFIGURE_OVERRIDE（上方）作为补充：对使用 $(CONFIGURE) 的包直接传 flag。
+          # 环境变量 enable_option_checking=no（上方 export）从进程级全局关闭
+          # autotools 的环境检测。覆盖 autoreconf 内部调用、config.status --recheck
+          # 等所有路径。CONFIGURE_OVERRIDE 作为补充：对使用 $(CONFIGURE) 的包直接传 flag。
 
           # 自托管 runner 可能残留上次构建的 autotools 状态文件。
           # autoreconf 会在内部不带 CFLAGS 先跑一次 configure，
