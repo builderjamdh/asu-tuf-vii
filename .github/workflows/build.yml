@@ -323,7 +323,7 @@ jobs:
           printf '%s\n' '#!/bin/sh' 'exec /usr/bin/gcc -Wno-implicit-int -Wno-return-type "$@"' > /tmp/wrapper-bin/gcc
           chmod +x /tmp/wrapper-bin/gcc
           export PATH="/tmp/wrapper-bin:$PATH"
-          export HOST_EXTRACFLAGS="-Wno-implicit-int -Wno-return-type"
+          export HOST_EXTRACFLAGS="-Wno-implicit-int -Wno-return-type -Wno-implicit-function-declaration"
           export HOSTCFLAGS="-Wno-implicit-int -Wno-return-type"
 
           # autotools configure cache — skip runtime tests during cross-compile.
@@ -580,6 +580,42 @@ jobs:
           # 伪造 stamp-h1 阻止 make 重新跑 configure
           touch "$JSONC_DIR/stamp-h1"
           echo "=== json-c headers done ==="
+
+          # nvram 预编译库路径不匹配 LDFLAGS 中的 -L 路径。
+          # LDFLAGS 指向 router-sysdep/nvram_arm/ 但实际在
+          # router-sysdep/wlan/nvram/prebuilt/。复制过去。
+          echo "=== Pre-staging nvram library ==="
+          NV_PREBUILT="$SRCDIR/router-sysdep/wlan/nvram/prebuilt/libnvram.so"
+          NV_DEST="$SRCDIR/router-sysdep/nvram_arm/"
+          if [ -f "$NV_PREBUILT" ]; then
+            mkdir -p "$NV_DEST"
+            cp -f "$NV_PREBUILT" "$NV_DEST/"
+            echo "  Copied libnvram.so to $NV_DEST"
+          else
+            echo "  !! nvram prebuilt not found at $NV_PREBUILT"
+          fi
+
+          # libgpg-error: configure 生成的 config.h 缺少 PACKAGE 宏定义
+          # 导致编译报 'PACKAGE' undeclared。手动预生成。
+          echo "=== Pre-generating libgpg-error config.h ==="
+          GPGERR_DIR="release/src-rt-5.04behnd.4916/bcmdrivers/broadcom/net/wl/bcm96764/main/src/router/libgpg-error-1.10"
+          if [ -d "$GPGERR_DIR/src" ]; then
+            cat > "$GPGERR_DIR/src/config.h" << 'GPGEOF'
+          #define PACKAGE "libgpg-error"
+          #define PACKAGE_NAME "libgpg-error"
+          #define PACKAGE_VERSION "1.10"
+          #define PACKAGE_STRING "libgpg-error 1.10"
+          #define PACKAGE_TARNAME "libgpg-error"
+          #define VERSION "1.10"
+          #define HAVE_STDINT_H 1
+          #define HAVE_STDLIB_H 1
+          #define HAVE_STRING_H 1
+          #define HAVE_UNISTD_H 1
+          #define STDC_HEADERS 1
+          GPGEOF
+            touch "$GPGERR_DIR/src/stamp-h1" 2>/dev/null || true
+            echo "  libgpg-error config.h pre-generated"
+          fi
 
           # Broadcom Makefile 缺少 config 生成 → 编译之间的依赖声明。
           # 两阶段：先跑 configure 生成配置文件，再全核编译。
