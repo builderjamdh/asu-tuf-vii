@@ -392,6 +392,7 @@ jobs:
             "lt_cv_prog_compiler_works=yes" \
             "lt_cv_prog_compiler_static_works=yes" \
             "lt_cv_prog_compiler_pic_works=yes" \
+            "lt_cv_prog_compiler_cxx_works=yes" \
             "lt_cv_path_LD=/opt/toolchains/crosstools-arm_softfp-gcc-10.3-linux-4.19-glibc-2.32-binutils-2.36.1/usr/bin/arm-buildroot-linux-gnueabi-ld" \
             "lt_cv_path_NM=/opt/toolchains/crosstools-arm_softfp-gcc-10.3-linux-4.19-glibc-2.32-binutils-2.36.1/usr/bin/arm-buildroot-linux-gnueabi-nm" \
             "lt_cv_path_STRIP=/opt/toolchains/crosstools-arm_softfp-gcc-10.3-linux-4.19-glibc-2.32-binutils-2.36.1/usr/bin/arm-buildroot-linux-gnueabi-strip" \
