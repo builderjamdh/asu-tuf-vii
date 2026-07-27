@@ -396,6 +396,8 @@ jobs:
             echo "!! gcc -print-sysroot returned empty — linking may fail"
           fi
           export CONFIG_SITE=/tmp/config.site
+          # 清理上次构建残留（可能导致 rm Directory not empty 错误）
+          rm -rf "$SRCDIR/targets/96764GW/fs.build" 2>/dev/null || true
 
           # platform.mak cp's prebuilt objects to destination dirs but
           # doesn't create all of them. Pre-create the missing ones.
