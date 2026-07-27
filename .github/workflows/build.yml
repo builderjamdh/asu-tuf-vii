@@ -612,7 +612,7 @@ jobs:
       - name: Validate Firmware
         if: always()
         run: |
-          FW=$(find "$SRCDIR" -maxdepth 3 \( -name '*.trx' -o -name '*.w' -o -name '*.bin' \) 2>/dev/null | head -1)
+          FW=$(find "$SRCDIR" -maxdepth 5 \( -name '*.pkgtb' -o -name '*.trx' -o -name '*.w' \) 2>/dev/null | head -1)
           if [ -z "$FW" ]; then
             echo "!! No firmware image found!"
             exit 1
@@ -623,17 +623,22 @@ jobs:
             echo "!! Firmware too small ($SIZE bytes), likely incomplete!"
             exit 1
           fi
-          if head -c4 "$FW" | grep -q 'HDR0'; then
-            echo "TRX header valid (HDR0)"
-          else
-            echo "! TRX header missing, image may be corrupted"
-          fi
+          case "$FW" in
+            *.pkgtb) echo "PKGTB firmware image OK" ;;
+            *.trx)
+              if head -c4 "$FW" | grep -q 'HDR0'; then
+                echo "TRX header valid (HDR0)"
+              else
+                echo "! TRX header missing, image may be corrupted"
+              fi
+              ;;
+          esac
 
       - name: Collect Artifacts
         if: always()
         run: |
           mkdir -p artifacts
-          find "$SRCDIR" -maxdepth 3 \( -name '*.trx' -o -name '*.w' -o -name '*.bin' \) \
+          find "$SRCDIR" -maxdepth 5 \( -name '*.pkgtb' -o -name '*.trx' -o -name '*.w' -o -name '*.bin' \) \
             -exec cp -v {} artifacts/ \; 2>/dev/null || true
           cp "$SRCDIR/build.log" artifacts/ 2>/dev/null || true
 
