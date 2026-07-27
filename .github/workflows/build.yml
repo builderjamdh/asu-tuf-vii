@@ -382,7 +382,6 @@ jobs:
             "ac_cv_env_LIBS_value=" \
             "ac_cv_env_CFLAGS_set=set" \
             "ac_cv_env_CFLAGS_value=" \
-            "enable_option_checking=no" \
             "ac_cv_build=x86_64-pc-linux-gnu" \
             "ac_cv_host=arm-buildroot-linux-gnueabi" \
             "ac_cv_target=arm-buildroot-linux-gnueabi" \
@@ -485,6 +484,11 @@ jobs:
           # 补上官方 README 要求的 LD_LIBRARY_PATH 和 TOOLCHAIN_BASE
           export LD_LIBRARY_PATH="$TC_PATH/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
           export TOOLCHAIN_BASE="/opt/toolchains"
+
+          # enable_option_checking=no 作为环境变量传给每个 configure，
+          # 全局关闭 "CFLAGS has changed since the previous run" 检测。
+          # 放在 CONFIG_SITE 里无效——它是 configure 命令行选项。
+          export enable_option_checking=no
 
           # enable_option_checking=no 在 CONFIG_SITE 中全局关闭
           # autotools 的 "CFLAGS has changed" 环境检测。
