@@ -582,14 +582,24 @@ jobs:
           echo "=== json-c headers done ==="
 
           # varargs.h 已被 GCC 废弃，但 db-4.8.30/dropbear 等包仍引用。
-          # 创建 stub 重定向到 stdarg.h，放在 include 路径最前面。
-          echo "=== Creating varargs.h stub ==="
-          mkdir -p /tmp/varargs-stub
+          # 直接覆盖工具链中的 varargs.h，重定向到 stdarg.h。
+          echo "=== Replacing toolchain varargs.h ==="
+          for tc in "$TC_PATH" "/opt/toolchains/$TC_NAME_ARMTF" "/opt/toolchains/$TC_NAME_OPTEE"; do
+            VH="$tc/lib/gcc/arm-buildroot-linux-gnueabi/*/include/varargs.h"
+            for f in $VH; do
+              if [ -f "$f" ] && ! grep -q "stdarg.h" "$f" 2>/dev/null; then
+                sudo cp "$f" "$f.bak" 2>/dev/null
+                sudo sh -c "echo '#include <stdarg.h>' > '$f'"
+                echo "  Patched: $f"
+              fi
+            done
+          done
           cat > /tmp/varargs-stub/varargs.h << 'VAEOF'
           #include <stdarg.h>
           VAEOF
           export CFLAGS="-I/tmp/varargs-stub $CFLAGS"
           export CXXFLAGS="-I/tmp/varargs-stub $CXXFLAGS"
+          export CPPFLAGS="-I/tmp/varargs-stub $CPPFLAGS"
 
           # nvram 预编译库路径不匹配 LDFLAGS 中的 -L 路径。
           # LDFLAGS 指向 router-sysdep/nvram_arm/ 但实际在
@@ -651,26 +661,6 @@ jobs:
           GEOF
             echo "  getdns stub Makefile created"
           fi
-
-          # dropbear: 预生成 config.h 后还需要 Makefile。
-          echo "=== Pre-gen dropbear Makefile ==="
-          if [ -d "release/src/router/dropbear" ] && [ ! -f "release/src/router/dropbear/Makefile" ]; then
-            cat > "release/src/router/dropbear/Makefile" << 'DBMF'
-          all install clean:
-          \t@echo "dropbear: skipped"
-          DBMF
-            touch "release/src/router/dropbear/stamp-h1" 2>/dev/null || true
-            echo "  dropbear stub Makefile created"
-          fi
-
-          # phddns/inadyn/flac/libgdbm: configure 失败，预生成 stamp-h1
-          echo "=== Pre-gen stamp-h1 for fragile packages ==="
-          for pkg in phddns inadyn flac libgdbm libevent-2.0.21; do
-            d="release/src/router/$pkg"
-            if [ -d "$d" ] && [ ! -f "$d/stamp-h1" ]; then
-              touch "$d/stamp-h1" 2>/dev/null && echo "  $pkg stamp-h1"
-            fi
-          done
 
           # Broadcom Makefile 缺少 config 生成 → 编译之间的依赖声明。
           # 两阶段：先跑 configure 生成配置文件，再全核编译。
