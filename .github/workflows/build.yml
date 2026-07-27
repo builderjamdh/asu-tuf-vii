@@ -652,6 +652,26 @@ jobs:
             echo "  getdns stub Makefile created"
           fi
 
+          # dropbear: 预生成 config.h 后还需要 Makefile。
+          echo "=== Pre-gen dropbear Makefile ==="
+          if [ -d "release/src/router/dropbear" ] && [ ! -f "release/src/router/dropbear/Makefile" ]; then
+            cat > "release/src/router/dropbear/Makefile" << 'DBMF'
+          all install clean:
+          \t@echo "dropbear: skipped"
+          DBMF
+            touch "release/src/router/dropbear/stamp-h1" 2>/dev/null || true
+            echo "  dropbear stub Makefile created"
+          fi
+
+          # phddns/inadyn/flac/libgdbm: configure 失败，预生成 stamp-h1
+          echo "=== Pre-gen stamp-h1 for fragile packages ==="
+          for pkg in phddns inadyn flac libgdbm libevent-2.0.21; do
+            d="release/src/router/$pkg"
+            if [ -d "$d" ] && [ ! -f "$d/stamp-h1" ]; then
+              touch "$d/stamp-h1" 2>/dev/null && echo "  $pkg stamp-h1"
+            fi
+          done
+
           # Broadcom Makefile 缺少 config 生成 → 编译之间的依赖声明。
           # 两阶段：先跑 configure 生成配置文件，再全核编译。
           # -k 容忍 configure 阶段的竞态失败（阶段2会补齐）。
