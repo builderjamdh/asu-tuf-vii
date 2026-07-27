@@ -1,4 +1,5 @@
 include ../common.mak
+.NOTPARALLEL:
 CFLAGS += $(if $(RTCONFIG_DEBUG),-g)
 
 ifeq ($(or $(RTCONFIG_BCMARM),$(RTCONFIG_QCA_ARM),$(RTCONFIG_ALPINE),$(MUSL_LIBC)),y)
