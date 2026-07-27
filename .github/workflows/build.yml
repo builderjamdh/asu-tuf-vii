@@ -470,10 +470,10 @@ jobs:
           export CPP="ccache arm-buildroot-linux-gnueabi-cpp"
 
           # Broadcom Makefile 缺少 config 生成 → 编译之间的依赖声明。
-          # 先 -j8 跑一趟生成配置文件和基础依赖（-k 容忍失败），
-          # 再 -j16 全核编译（make 天然跳过已成功目标）。
-          echo "=== Pass 1/2: configure + deps (-j8) ==="
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j8 -k -s 2>&1 | tee "$SRCDIR/build.log"
+          # 两阶段：先跑 configure 生成配置文件，再全核编译。
+          # -k 容忍 configure 阶段的竞态失败（阶段2会补齐）。
+          echo "=== Pass 1/2: configure + deps (-j16) ==="
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j16 -k -s 2>&1 | tee "$SRCDIR/build.log"
           # 两阶段构建中，阶段1的 configure 会在 config.status 里缓存
           # 环境变量（CFLAGS/LDFLAGS/LIBS/CPPFLAGS）的快照。
           # 阶段2若因依赖变动重新触发 configure，autotools 检测到
@@ -485,9 +485,9 @@ jobs:
           find release/src/router -name config.status -delete 2>/dev/null || true
           find release/src/router -name config.cache -delete 2>/dev/null || true
           find release/src/router -name config.log -delete 2>/dev/null || true
-          echo "=== Pass 2/2: parallel compile (-j16) ==="
+          echo "=== Pass 2/2: parallel compile (-j32) ==="
           set +e
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j16 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j32 -k -s 2>&1 | tee -a "$SRCDIR/build.log"
           RESULT=${PIPESTATUS[1]}
           set -e
 
