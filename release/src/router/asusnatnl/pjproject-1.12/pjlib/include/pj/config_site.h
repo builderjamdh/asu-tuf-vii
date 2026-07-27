@@ -102,7 +102,7 @@
 
 #define PJ_ICE_MAX_CHECKS		1024
 #define PJ_ICE_CANCEL_ALL		1
-#define PJ_HAS_SSL_SOCK			1
+//#define PJ_HAS_SSL_SOCK			1
 //#define PJ_HAS_IPV6				1
 #if PJ_CONFIG_IPHONE==1
 #include <pj/config_site_sample.h>
