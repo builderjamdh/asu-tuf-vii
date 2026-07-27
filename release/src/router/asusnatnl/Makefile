@@ -14,7 +14,7 @@ ARCH=MIPS
 endif
 
 all: pjproject-1.12/stamp-h1-$(ARCH)
-	$(MAKE) -C pjproject-1.12 UCLIBC_NG=$(UCLIBC_NG)
+	$(MAKE) -C pjproject-1.12 -j1 CC=$(CC) AR=$(AR) RANLIB=$(RANLIB) UCLIBC_NG=$(UCLIBC_NG)
 	$(MAKE) -C udt os=LINUX arch=$(ARCH)
 	$(MAKE) -C natnl linux-lib router=yes RTCONFIG_SW_HW_AUTH=$(RTCONFIG_SW_HW_AUTH)
 #	$(MAKE) -C natnl/msvc_prjs/asusnatnl_test
@@ -26,6 +26,6 @@ clean:
 	@rm -f pjproject-1.12/stamp-h1-*
 
 pjproject-1.12/stamp-h1-%:
-	cd pjproject-1.12 && AR="$(AR) -r -v" \
+	cd pjproject-1.12 && CC="$(CC)" AR="$(AR) -r -v" \
 	./$(CONFIGURE)
 	@touch $@
