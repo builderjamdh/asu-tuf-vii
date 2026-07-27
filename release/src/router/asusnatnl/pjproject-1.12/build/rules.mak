@@ -1,9 +1,5 @@
-ifeq ($(LIBDIR),)
-LIBDIR = ../lib
-endif
-ifeq ($(BINDIR),)
-BINDIR = ../bin
-endif
+override LIBDIR = ../lib
+override BINDIR = ../bin
 
 #
 # The full path of output lib file (e.g. ../lib/libapp.a).
