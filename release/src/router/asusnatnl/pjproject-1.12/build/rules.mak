@@ -78,7 +78,7 @@ print_lib: print_common
 	@echo LIBDIR=$(LIBDIR)
 
 $(LIB): $(OBJDIRS) $(OBJS) $($(APP)_EXTRA_DEP)
-	if test ! -d $(LIBDIR); then $(subst @@,$(subst /,$(HOST_PSEP),$(LIBDIR)),$(HOST_MKDIR)); fi
+	mkdir -p $(LIBDIR)
 	$(AR) $(LIB) $(OBJS)
 	$(RANLIB) $(LIB)
 
