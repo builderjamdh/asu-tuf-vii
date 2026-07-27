@@ -425,6 +425,23 @@ jobs:
             sed -i 's/RTCONFIG_IPERF3=y/# RTCONFIG_IPERF3 is not set/' "$cfg" 2>/dev/null || true
           done
 
+          # ---- 构建前最终验证 ----
+          WLDIR="$SRCDIR/bcmdrivers/broadcom/net/wl"
+          if [ ! -L "$WLDIR/bcm96764" ]; then
+            ln -sf impl105 "$WLDIR/bcm96764"
+          fi
+          TESTFILE="$WLDIR/bcm96764/main/src/router/busybox-1.24.1/busybox-1.24.1/config_base"
+          if [ -f "$TESTFILE" ]; then
+            echo "  OK: config_base via bcm96764 chain"
+          else
+            echo "  !! NOT found: $TESTFILE"
+            for link in "$WLDIR/bcm96764" "$WLDIR/impl105/main/src/router" "$WLDIR/impl105/main/src" "$WLDIR/impl105/main" "$WLDIR/impl105"; do
+              if [ -L "$link" ]; then echo "  LINK $link -> $(readlink "$link")"; [ ! -e "$link" ] && echo "  !! BROKEN"
+              elif [ -e "$link" ]; then echo "  EXISTS $link (not a symlink)"; else echo "  MISSING $link"; fi
+            done
+            echo "  Direct check: $(test -f "${GITHUB_WORKSPACE}/release/src/router/busybox-1.24.1/busybox-1.24.1/config_base" && echo OK || echo MISSING)"
+          fi
+
           # ---- 构建 ----
           # GPL包本身是完整的（ASUSGO团队已验证），直接单次make全核编译。
           # yes "" 管道回答任何交互式配置提示。
