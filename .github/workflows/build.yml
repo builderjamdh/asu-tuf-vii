@@ -320,10 +320,7 @@ jobs:
           # (HOST_EXTRACFLAGS, HOSTCFLAGS, or none at all for kernel tarball).
           # Creating a gcc wrapper is the only approach that covers all cases.
           GCC_WRAPPER=/tmp/gcc-wrapper
-          cat > "$GCC_WRAPPER" <<'WRAPEOF'
-#!/bin/sh
-exec /usr/bin/gcc -Wno-implicit-int -Wno-return-type "$@"
-WRAPEOF
+          printf '%s\n' '#!/bin/sh' 'exec /usr/bin/gcc -Wno-implicit-int -Wno-return-type "$@"' > "$GCC_WRAPPER"
           chmod +x "$GCC_WRAPPER"
           export HOSTCC="$GCC_WRAPPER"
           export HOST_EXTRACFLAGS="-Wno-implicit-int -Wno-return-type"
