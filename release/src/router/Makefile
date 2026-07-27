@@ -4609,7 +4609,7 @@ vsftpd-install:
 	install -D vsftpd/vsftpd $(INSTALLDIR)/vsftpd/usr/sbin/vsftpd
 	$(STRIP) -s $(INSTALLDIR)/vsftpd/usr/sbin/vsftpd
 
-vsftpd-3.x: shared $(ftp_dep)
+vsftpd-3.x: nvram$(BCMEX) $(ftp_dep)
 	@$(SEP)
 ifeq ($(RTCONFIG_FTP_SSL),y)
 	-cp vsftpd-3.x/builddefs-ssl.h vsftpd-3.x/builddefs.h
@@ -7239,7 +7239,7 @@ libnl-clean:
 $(HOSTAPD_DIR)/hostapd/.config: $(HOSTAPD_DIR)/hostapd/brcm.config
 	cp $(HOSTAPD_DIR)/hostapd/brcm.config $(HOSTAPD_DIR)/hostapd/.config;
 
-hostapd: libnl openssl shared $(HOSTAPD_DIR)/hostapd/.config
+hostapd: libnl openssl nvram$(BCMEX) $(HOSTAPD_DIR)/hostapd/.config
 	+$(MAKE) -C $(HOSTAPD_DIR)/hostapd
 
 hostapd-install:
@@ -7254,7 +7254,7 @@ hostapd-clean:
 $(WPA_SUPPLICANT_DIR)/wpa_supplicant/.config: $(WPA_SUPPLICANT_DIR)/wpa_supplicant/brcm.config
 	cp $(WPA_SUPPLICANT_DIR)/wpa_supplicant/brcm.config $(WPA_SUPPLICANT_DIR)/wpa_supplicant/.config;
 
-wpa_supplicant-2.7: shared libnl $(WPA_SUPPLICANT_DIR)/wpa_supplicant/.config $(if $(or $(HND_ROUTER_AX_6756),$(HND_ROUTER_BE_4916),$(BCM_502L07P2)),cevent_app)
+wpa_supplicant-2.7: nvram$(BCMEX) libnl $(WPA_SUPPLICANT_DIR)/wpa_supplicant/.config $(if $(or $(HND_ROUTER_AX_6756),$(HND_ROUTER_BE_4916),$(BCM_502L07P2)),cevent_app)
 	+$(MAKE) -C $(WPA_SUPPLICANT_DIR)/wpa_supplicant
 
 wpa_supplicant-2.7-install:
