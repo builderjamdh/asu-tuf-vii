@@ -581,6 +581,16 @@ jobs:
           touch "$JSONC_DIR/stamp-h1"
           echo "=== json-c headers done ==="
 
+          # varargs.h 已被 GCC 废弃，但 db-4.8.30/dropbear 等包仍引用。
+          # 创建 stub 重定向到 stdarg.h，放在 include 路径最前面。
+          echo "=== Creating varargs.h stub ==="
+          mkdir -p /tmp/varargs-stub
+          cat > /tmp/varargs-stub/varargs.h << 'VAEOF'
+          #include <stdarg.h>
+          VAEOF
+          export CFLAGS="-I/tmp/varargs-stub $CFLAGS"
+          export CXXFLAGS="-I/tmp/varargs-stub $CXXFLAGS"
+
           # nvram 预编译库路径不匹配 LDFLAGS 中的 -L 路径。
           # LDFLAGS 指向 router-sysdep/nvram_arm/ 但实际在
           # router-sysdep/wlan/nvram/prebuilt/。复制过去。
