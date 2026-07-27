@@ -154,19 +154,19 @@ distclean: realclean
 .PHONY: dep depend pjmedia pjmedia-codec pjmedia-audiodev pjmedia-test clean realclean distclean
 
 pjmedia:
-	$(MAKE) -f $(RULES_MAK) APP=PJMEDIA app=pjmedia $(PJMEDIA_LIB)
+	$(MAKE) -f $(RULES_MAK) APP=PJMEDIA app=pjmedia $(PJMEDIA_LIB) AR="$(AR)" CC="$(CC)" RANLIB="$(RANLIB)"
 
 pjmedia-codec:
-	$(MAKE) -f $(RULES_MAK) APP=PJMEDIA_CODEC app=pjmedia-codec $(PJMEDIA_CODEC_LIB)
+	$(MAKE) -f $(RULES_MAK) APP=PJMEDIA_CODEC app=pjmedia-codec $(PJMEDIA_CODEC_LIB) AR="$(AR)" CC="$(CC)" RANLIB="$(RANLIB)"
 
 pjmedia-audiodev:
-	$(MAKE) -f $(RULES_MAK) APP=PJMEDIA_AUDIODEV app=pjmedia-audiodev $(PJMEDIA_AUDIODEV_LIB)
+	$(MAKE) -f $(RULES_MAK) APP=PJMEDIA_AUDIODEV app=pjmedia-audiodev $(PJMEDIA_AUDIODEV_LIB) AR="$(AR)" CC="$(CC)" RANLIB="$(RANLIB)"
 
 pjsdp:
-	$(MAKE) -f $(RULES_MAK) APP=PJSDP app=pjsdp $(PJSDP_LIB)
+	$(MAKE) -f $(RULES_MAK) APP=PJSDP app=pjsdp $(PJSDP_LIB) AR="$(AR)" CC="$(CC)" RANLIB="$(RANLIB)"
 
 pjmedia-test: $(PJMEDIA_LIB)
-	$(MAKE) -f $(RULES_MAK) APP=PJMEDIA_TEST app=pjmedia-test $(PJMEDIA_TEST_EXE)
+	$(MAKE) -f $(RULES_MAK) APP=PJMEDIA_TEST app=pjmedia-test $(PJMEDIA_TEST_EXE) AR="$(AR)" CC="$(CC)" RANLIB="$(RANLIB)"
 
 .PHONY: ../lib/pjmedia.ko
 ../lib/pjmedia.ko:

@@ -81,10 +81,10 @@ distclean: realclean
 .PHONY: dep depend pjlib pjlib-test clean realclean distclean
 
 pjlib-util:
-	$(MAKE) -f $(RULES_MAK) APP=PJLIB_UTIL app=pjlib-util $(PJLIB_UTIL_LIB)
+	$(MAKE) -f $(RULES_MAK) APP=PJLIB_UTIL app=pjlib-util $(PJLIB_UTIL_LIB) AR="$(AR)" CC="$(CC)" RANLIB="$(RANLIB)"
 
 pjlib-util-test:
-	$(MAKE) -f $(RULES_MAK) APP=UTIL_TEST app=pjlib-util-test $(UTIL_TEST_EXE)
+	$(MAKE) -f $(RULES_MAK) APP=UTIL_TEST app=pjlib-util-test $(UTIL_TEST_EXE) AR="$(AR)" CC="$(CC)" RANLIB="$(RANLIB)"
 
 .PHONY: ../lib/pjlib-util.ko
 ../lib/pjlib-util.ko:

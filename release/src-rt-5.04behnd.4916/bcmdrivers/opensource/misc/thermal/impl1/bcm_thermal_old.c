@@ -115,6 +115,8 @@ void bcm_cpufreq_set_freq_max(unsigned maxdiv)
 	*bcr_cluster_clk_ctrl0 = 1 << 4;	// enable user clock-patterns
 #endif
 }
+#else
+void bcm_cpufreq_set_freq_max(unsigned maxdiv) { }
 #endif
 
 // TEMPERATURE LIMITS

@@ -135,19 +135,19 @@ distclean: realclean
 .PHONY: dep depend pjsip pjsip-ua pjsua-lib clean realclean distclean
 
 pjsip:
-	$(MAKE) -f $(RULES_MAK) APP=PJSIP app=pjsip $(PJSIP_LIB)
+	$(MAKE) -f $(RULES_MAK) APP=PJSIP app=pjsip $(PJSIP_LIB) AR="$(AR)" CC="$(CC)" RANLIB="$(RANLIB)"
 
 pjsip-ua:
-	$(MAKE) -f $(RULES_MAK) APP=PJSIP_UA app=pjsip-ua $(PJSIP_UA_LIB)
+	$(MAKE) -f $(RULES_MAK) APP=PJSIP_UA app=pjsip-ua $(PJSIP_UA_LIB) AR="$(AR)" CC="$(CC)" RANLIB="$(RANLIB)"
 
 pjsip-simple:
-	$(MAKE) -f $(RULES_MAK) APP=PJSIP_SIMPLE app=pjsip-simple $(PJSIP_SIMPLE_LIB)
+	$(MAKE) -f $(RULES_MAK) APP=PJSIP_SIMPLE app=pjsip-simple $(PJSIP_SIMPLE_LIB) AR="$(AR)" CC="$(CC)" RANLIB="$(RANLIB)"
 
 pjsua-lib: 
-	$(MAKE) -f $(RULES_MAK) APP=PJSUA_LIB app=pjsua-lib $(PJSUA_LIB_LIB)
+	$(MAKE) -f $(RULES_MAK) APP=PJSUA_LIB app=pjsua-lib $(PJSUA_LIB_LIB) AR="$(AR)" CC="$(CC)" RANLIB="$(RANLIB)"
 
 pjsip-test:
-	$(MAKE) -f $(RULES_MAK) APP=TEST app=pjsip-test $(TEST_EXE)
+	$(MAKE) -f $(RULES_MAK) APP=TEST app=pjsip-test $(TEST_EXE) AR="$(AR)" CC="$(CC)" RANLIB="$(RANLIB)"
 
 .PHONY: ../lib/pjsip.ko
 ../lib/pjsip.ko:
