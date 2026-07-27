@@ -77,7 +77,7 @@ print_lib: print_common
 	@echo LIB=$(LIB)
 	@echo LIBDIR=$(LIBDIR)
 
-$(LIB): $(OBJDIRS) $(OBJS) $($(APP)_EXTRA_DEP)
+$(LIB): $(OBJDIRS) $(OBJS) $($(APP)_EXTRA_DEP) | $(LIBDIR)
 	mkdir -p $(LIBDIR)
 	$(AR) $(LIB) $(OBJS)
 	$(RANLIB) $(LIB)
@@ -139,7 +139,7 @@ $(OBJDIRS):
 	$(subst @@,$(subst /,$(HOST_PSEP),$@),$(HOST_MKDIR)) 
 
 $(LIBDIR):
-	$(subst @@,$(subst /,$(HOST_PSEP),$(LIBDIR)),$(HOST_MKDIR))
+	mkdir -p $@
 
 $(BINDIR):
 	$(subst @@,$(subst /,$(HOST_PSEP),$(BINDIR)),$(HOST_MKDIR))
