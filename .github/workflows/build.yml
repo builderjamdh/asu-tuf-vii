@@ -35,6 +35,32 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Verify Checkout Integrity
+        run: |
+          # LFS 指针文件只有几十字节（如 `version https://git-lfs.github.com/...`），
+          # 如果不是真正的二进制，说明 LFS 没拉下来，后续 make 会直接报错。
+          echo "Checking for unresolved Git LFS pointers..."
+          if git lfs ls-files -l 2>/dev/null | grep -q '\*'; then
+            BAD=$(git lfs ls-files -l 2>/dev/null | grep '\*' | wc -l)
+            echo "!! $BAD LFS files are still pointers, pulling..."
+            git lfs pull
+          else
+            echo "All LFS files resolved"
+          fi
+          # 关键配置文件必须存在
+          for f in \
+            release/src/router/config_base \
+            release/src/router/busybox-1.24.1/busybox-1.24.1/config_base \
+          ; do
+            if [ -f "$f" ]; then
+              echo "  OK: $f"
+            else
+              echo "  !! MISSING: $f"
+            fi
+          done
 
       - name: Install Dependencies
         run: |
@@ -201,12 +227,45 @@ jobs:
           printf '#!/bin/sh\nexit 0\n' | sudo tee /usr/local/bin/repo > /dev/null
           sudo chmod +x /usr/local/bin/repo
 
+      - name: Fix Git Symlinks
+        run: |
+          # self-hosted runner 可能因 git config / filesystem 等原因
+          # 没有正确还原符号链接。验证并修复关键链接。
+          echo "Verifying key symlinks..."
+          verify_symlink() {
+            local link="$1" target="$2"
+            if [ -L "$link" ]; then
+              local cur; cur=$(readlink "$link")
+              if [ "$cur" != "$target" ]; then
+                echo "  Fixing $link: $cur -> $target"
+                ln -sf "$target" "$link"
+              fi
+            else
+              echo "  Creating $link -> $target"
+              if [ -e "$link" ]; then rm -rf "$link"; fi
+              ln -sf "$target" "$link"
+            fi
+          }
+          # bcm96764 在 make 时自动创建，但确保 impl105 内链正确
+          verify_symlink "$SRCDIR/bcmdrivers/broadcom/net/wl/impl105/main/src/router" \
+                         "../../../../../../../../src/router"
+          verify_symlink "$SRCDIR/bcmdrivers/broadcom/net/wl/impl105/main/src/router-sysdep" \
+                         "../../../../../../../../src-rt-5.04behnd.4916/router-sysdep"
+          verify_symlink "$SRCDIR/bcmdrivers/broadcom/net/wl/impl105/main/src/kernel" \
+                         "../../../../../../../kernel"
+          # busbox config 源文件必须存在
+          for f in \
+            "$SRCDIR/../src/router/busybox-1.24.1/busybox-1.24.1/config_base" \
+            "$SRCDIR/../src/router/config_base" \
+          ; do
+            if [ ! -f "$f" ]; then
+              echo "!! Missing critical file: $f"
+              echo "!! Check that git checkout is complete (no LFS pointers, no sparse checkout)"
+            fi
+          done
+
       - name: Fix Script Permissions
         run: |
-          # 之前只扫描 $SRCDIR，但很多被调用的脚本（比如
-          # release/src/router/busybox-1.24.1/.../gen_build_files.sh）实际上
-          # 在 release/src/router/ 下，不在 $SRCDIR 里，永远扫不到，导致
-          # "Permission denied" 一直复现。现在改成扫描整个 checkout。
           echo "Scanning for scripts missing the executable bit (whole checkout)..."
           find . -not -path './.git/*' -type f \( \
               -name "*.sh" -o -name "*.pl" -o -name "*.py" \
