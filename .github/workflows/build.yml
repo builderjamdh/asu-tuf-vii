@@ -597,7 +597,7 @@ jobs:
           cat > /tmp/varargs-stub/varargs.h << 'VAEOF'
           #include <stdarg.h>
           VAEOF
-          export CFLAGS="-I/tmp/varargs-stub $CFLAGS"
+          export CFLAGS="-I/tmp/varargs-stub -include stdlib.h $CFLAGS"
           export CXXFLAGS="-I/tmp/varargs-stub $CXXFLAGS"
           export CPPFLAGS="-I/tmp/varargs-stub $CPPFLAGS"
 
