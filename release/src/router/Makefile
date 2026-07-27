@@ -9563,7 +9563,7 @@ appx:
 
 .PHONY : appx
 
-asusnatnl: openssl-stage
+asusnatnl: openssl
 	$(MAKE) -C $@ $(shell if [[ "$(HND_ROUTER)" = "y" ]] ; then echo "LD="""; else echo ""; fi)
 
 asusnatnl-clean:
