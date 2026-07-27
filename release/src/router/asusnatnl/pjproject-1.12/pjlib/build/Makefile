@@ -12,6 +12,7 @@ RULES_MAK := $(PJDIR)/build/rules.mak
 
 
 export PJLIB_LIB := ../lib/libpj-$(TARGET_NAME)$(LIBEXT)
+export LIBDIR := ../lib
 
 ###############################################################################
 # Gather all flags.

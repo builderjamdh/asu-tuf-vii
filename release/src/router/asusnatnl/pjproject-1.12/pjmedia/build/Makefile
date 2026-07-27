@@ -14,6 +14,7 @@ USRSCTP_INC=$(CC_INC)$(THIRD_PARTY)/usrsctp/usrsctplib
 USRSCTP_LIBS=-lusrsctp-$(TARGET_NAME)
 
 include $(PJDIR)/build/common.mak
+export LIBDIR := ../lib
 
 RULES_MAK := $(PJDIR)/build/rules.mak
 

@@ -6,6 +6,7 @@ export TEST_OBJS = main.o
 include ../../build.mak
 include ../../version.mak
 include $(PJDIR)/build/common.mak
+export LIBDIR := ../lib
 
 THIRD_PARTY:=$(PJDIR)/third_party
 
