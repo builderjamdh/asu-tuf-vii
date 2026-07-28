@@ -619,7 +619,7 @@ jobs:
           # libcreduction 步骤检查所需 .so 是否在 INSTALL_DIR 或 TOOLCHAIN_TOP。
           # 将预编译的库复制到工具链 sysroot lib，确保 find -L 能找到。
           echo "=== Pre-staging pre-built libraries to toolchain sysroot ==="
-          TC_SYSROOT_LIB="$TC_PATH/arm-buildroot-linux-gnueabi/sysroot/lib"
+          TC_SYSROOT_LIB="$TC_PATH/arm-buildroot-linux-gnueabi/sysroot/lib32"
           mkdir -p "$TC_SYSROOT_LIB"
           for lib in \
             release/src/router/libasc/prebuild/libasc.so \
