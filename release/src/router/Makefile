@@ -3469,7 +3469,7 @@ libwebapi/stamp-h1:
 	touch $@
 	$(MAKE) libwebapi-dep
 
-libwebapi: libwebapi/stamp-h1
+libwebapi: libwebapi/stamp-h1 shared json-c
 	@$(SEP)
 	@$(MAKE) -C libwebapi CC=$(CC)
 
