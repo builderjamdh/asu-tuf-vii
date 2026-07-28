@@ -764,6 +764,19 @@ jobs:
           RESULT=${PIPESTATUS[1]}
           set -e
 
+          # Phase 2 并行构建中 httpd/dropbear 的依赖库竞态无法完全消除。
+          # 在所有包构建完成后，在 router 子目录串行重编译。
+          echo "=== Serial rebuild: httpd ==="
+          set +e
+          make -C "$SRCDIR/router" -j1 -k \
+            httpd httpd-install \
+            CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
+          echo "=== Serial rebuild: dropbear ==="
+          make -C "$SRCDIR/router" -j1 -k \
+            dropbear dropbear-install \
+            CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
+          set -e
+
           if [ "$RESULT" -ne 0 ]; then
             echo "=== Build failed (exit $RESULT), tail of errors: ==="
             grep -nE "error:|Error [0-9]+|fatal:" "$SRCDIR/build.log" | tail -n 60
