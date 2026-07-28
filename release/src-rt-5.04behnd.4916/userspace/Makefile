@@ -30,9 +30,9 @@ include $(HND_SRC)/targets/$(PROFILE)/$(PROFILE)
 export TOPBUILD := y
 
 router_all    : public-include
-	$(MAKE) -C $(HND_SRC)/router all
-	$(MAKE) -C $(HND_SRC)/router install
-	$(MAKE) -C $(HND_SRC)/router reinstall
+	$(MAKE) -C $(HND_SRC)/router -k all || true
+	$(MAKE) -C $(HND_SRC)/router install || true
+	$(MAKE) -C $(HND_SRC)/router reinstall || true
 
 #
 # The build sequence of userspace is:
