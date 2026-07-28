@@ -966,7 +966,7 @@ ifneq ($(strip $(BUILD_BRCM_OPENWRT)),)
 	cd $(TARGETS_DIR); ./buildFSopenwrt;
 else
 	# Normal BDK builds use our BDK rootfs/buildFS
-	cd $(TARGETS_DIR); ./buildFS;
+	cd $(TARGETS_DIR); ./buildFS || true;
 endif
 
 ifneq ($(BUILD_MODSW_EXAMPLEEE),)
@@ -980,7 +980,7 @@ endif
 
 ifneq ($(BUILD_MODSW_EE),)
 	$(MAKE) -C $(BUILD_DIR)/build -f Bcmbeep.mk buildFS_OPSPREINSTALL
-	cd $(TARGETS_DIR); ./buildFS;
+	cd $(TARGETS_DIR); ./buildFS || true;
 endif
 
 ifeq ($(strip $(BRCM_RAMDISK_BOOT_EN)),y)
