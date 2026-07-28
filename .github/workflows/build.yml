@@ -777,16 +777,23 @@ jobs:
           set -e
 
           # Phase 2 并行构建中 httpd/dropbear 的依赖库竞态无法完全消除。
-          # 在所有包构建完成后，在 router 子目录串行重编译。
+          # 在所有包构建完成后串行重编译，手动安装绕过 install 步骤问题。
           echo "=== Serial rebuild: httpd ==="
           set +e
           make -C "$SRCDIR/router" -j1 -k \
-            httpd httpd-install \
-            CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
+            httpd CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
+          HTTPD_BIN="$SRCDIR/router/httpd/httpd"
+          FSI="$SRCDIR/targets/96764GW/fs.install"
+          if [ -f "$HTTPD_BIN" ]; then
+            install -D "$HTTPD_BIN" "$FSI/httpd/usr/sbin/httpd" && echo "  httpd installed"
+          fi
           echo "=== Serial rebuild: dropbear ==="
           make -C "$SRCDIR/router" -j1 -k \
-            dropbear dropbear-install \
-            CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
+            dropbear CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
+          DB_BIN="$SRCDIR/router/dropbear/dropbearmulti"
+          if [ -f "$DB_BIN" ]; then
+            install -D "$DB_BIN" "$FSI/dropbear/usr/bin/dropbearmulti" && echo "  dropbear installed"
+          fi
           set -e
 
           if [ "$RESULT" -ne 0 ]; then
