@@ -99,6 +99,7 @@ if [ "$BRCM_KERNEL_ROOTFS" = "all" ]; then
               JOURNALSIZE=$[ $JOURNALSIZE / 2 ]
            done
 
+chmod +x $HOSTTOOLS_DIR/mtd-utils*/mkfs.ubifs 2>/dev/null || true
            $HOSTTOOLS_DIR/mtd-utils*/mkfs.ubifs --squash-uids -F -v -c 2048 -m $PAGE -e $LEB -x zlib -j ${JOURNALSIZE} -r $TARGET_FS -o $PROFILE_DIR/rootfs_${BLK}.ubifs
 
            parl_token_free
