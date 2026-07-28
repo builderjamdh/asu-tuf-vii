@@ -578,9 +578,11 @@ jobs:
           #define VERSION "0.12.1"
           JSONCEOF
           # 伪造 stamp-h1 阻止 make 重新跑 configure
-          # configure 还需生成 Makefile —— 从 Makefile.in 复制并做变量替换
+          # configure 还需生成 Makefile —— 从 Makefile.in 复制并清除 @VAR@
           if [ -f "$JSONC_DIR/Makefile.in" ] && [ ! -f "$JSONC_DIR/Makefile" ]; then
-            cp "$JSONC_DIR/Makefile.in" "$JSONC_DIR/Makefile"
+            sed -e 's/@SET_MAKE@//g' \
+                -e 's/@[A-Z_]*@//g' \
+                "$JSONC_DIR/Makefile.in" > "$JSONC_DIR/Makefile"
           fi
           touch "$JSONC_DIR/stamp-h1"
           echo "=== json-c configured ==="
