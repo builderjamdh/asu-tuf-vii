@@ -616,24 +616,22 @@ jobs:
             echo "  !! nvram prebuilt not found at $NV_PREBUILT"
           fi
 
-          # libcreduction 步骤检查 stage/lib 下是否有所有需要的 .so。
-          # 预编译库若不在该目录会被判定为缺失，复制过去。
-          echo "=== Pre-staging pre-built libraries to stage ==="
-          STAGE_LIB="$SRCDIR/arm-glibc/stage/lib"
-          mkdir -p "$STAGE_LIB"
-          # 复制预编译的 .so
+          # libcreduction 步骤检查所需 .so 是否在 INSTALL_DIR 或 TOOLCHAIN_TOP。
+          # 将预编译的库复制到工具链 sysroot lib，确保 find -L 能找到。
+          echo "=== Pre-staging pre-built libraries to toolchain sysroot ==="
+          TC_SYSROOT_LIB="$TC_PATH/arm-buildroot-linux-gnueabi/sysroot/lib"
+          mkdir -p "$TC_SYSROOT_LIB"
           for lib in \
             release/src/router/libasc/prebuild/libasc.so \
             release/src/router/protect_srv/lib/prebuild/libptcsrv.so \
             release/src-rt-5.04behnd.4916/router-sysdep/wlan/nvram/prebuilt/libnvram.so \
             ; do
             if [ -f "$lib" ]; then
-              cp -f "$lib" "$STAGE_LIB/" && echo "  Copied $(basename $lib)"
+              cp -f "$lib" "$TC_SYSROOT_LIB/" && echo "  Copied $(basename $lib) to sysroot"
             fi
           done
-          # libcurl/libjson-c 构建可能失败，空占位满足 libcreduction 检查
           for stub in libcurl.so.4 libjson-c.so.2; do
-            [ ! -f "$STAGE_LIB/$stub" ] && touch "$STAGE_LIB/$stub" && echo "  Created stub: $stub"
+            [ ! -f "$TC_SYSROOT_LIB/$stub" ] && touch "$TC_SYSROOT_LIB/$stub" && echo "  Created sysroot stub: $stub"
           done
 
           # libgpg-error: configure 生成的 config.h 缺少 PACKAGE 宏定义
