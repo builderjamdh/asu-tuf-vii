@@ -681,6 +681,20 @@ jobs:
             echo "  getdns stub Makefile created"
           fi
 
+          # fdt/其他包 install 时报 "Not a directory" — fs.install/lib 可能
+          # 是残留文件而非目录。提前清理。
+          FSI_LIB="release/src-rt-5.04behnd.4916/targets/96764GW/fs.install/lib"
+          if [ -f "$FSI_LIB" ] && [ ! -d "$FSI_LIB" ]; then
+            rm -f "$FSI_LIB" && mkdir -p "$FSI_LIB" && echo "  Fixed fs.install/lib (was file, now dir)"
+          fi
+
+          # libwebapi: autoreconf 失败导致 stamp-h1 缺失，进而 httpd 链接
+          # 不到 -lwebapi。预生成 stamp-h1 跳过无效的 configure。
+          WEBAPI_DIR="release/src-rt-5.04behnd.4916/bcmdrivers/broadcom/net/wl/bcm96764/main/src/router/libwebapi"
+          if [ -d "$WEBAPI_DIR" ] && [ ! -f "$WEBAPI_DIR/stamp-h1" ]; then
+            touch "$WEBAPI_DIR/stamp-h1" && echo "  libwebapi stamp-h1 pre-created"
+          fi
+
           # Broadcom Makefile 缺少 config 生成 → 编译之间的依赖声明。
           # 两阶段：先跑 configure 生成配置文件，再全核编译。
           # -k 容忍 configure 阶段的竞态失败（阶段2会补齐）。
