@@ -581,9 +581,12 @@ jobs:
           # configure 还需生成 Makefile —— 从 Makefile.in 复制并清除 @VAR@
           if [ -f "$JSONC_DIR/Makefile.in" ] && [ ! -f "$JSONC_DIR/Makefile" ]; then
             sed -e '/^@.*@/d' \
+                -e '/^Makefile:.*config.status/d' \
                 -e 's/@SET_MAKE@//g' \
                 -e 's/@[A-Za-z_]*@//g' \
                 "$JSONC_DIR/Makefile.in" > "$JSONC_DIR/Makefile"
+            # 阻止 make 尝试重新生成 Makefile（依赖 aclocal.m4）
+            touch "$JSONC_DIR/aclocal.m4" "$JSONC_DIR/Makefile.in" 2>/dev/null || true
           fi
           touch "$JSONC_DIR/stamp-h1"
           echo "=== json-c configured ==="
