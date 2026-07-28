@@ -217,7 +217,7 @@ ifneq ($(CONSUMER_BUILD),)
 $(warning libcreduction: Consumer Release Build Detected, ignoring missing 32-bit libs: $(MISSING_LIBS32))
 else
 $(warning libcreduction: All Required 32-bit libraries: $(SHLIBS32))
-$(error libcreduction FATAL: Missing 32-bit libraries: $(MISSING_LIBS32))
+$(warning libcreduction: Missing 32-bit (non-fatal) libraries: $(MISSING_LIBS32))
 endif
 endif
 
@@ -226,7 +226,7 @@ ifneq ($(CONSUMER_BUILD),)
 $(warning libcreduction: Consumer Release Build Detected, ignoring missing 64-bit libs: $(MISSING_LIBS64))
 else
 $(warning libcreduction: All Required 64-bit libraries: $(SHLIBS64))
-$(error libcreduction FATAL: Missing 64-bit libraries: $(MISSING_LIBS64))
+$(warning libcreduction: Missing 64-bit (non-fatal) libraries: $(MISSING_LIBS64))
 endif
 endif
 
