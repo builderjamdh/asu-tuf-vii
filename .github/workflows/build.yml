@@ -596,6 +596,13 @@ jobs:
           	$(RANLIB) $@
           $(SOLIB): $(OBJS)
           	$(CC) -shared -o $@ $^ -lm
+          stage: all
+          	mkdir -p $(STAGEDIR)/usr/lib $(TOP)/json-c/.libs
+          	cp -f $(LIB) $(SOLIB) $(STAGEDIR)/usr/lib/
+          	cp -f $(SOLIB) $(TOP)/json-c/.libs/libjson-c.so
+          	cp -f $(SOLIB) $(TOP)/json-c/.libs/libjson-c.so.2
+          install: stage
+          .PHONY: stage install
           clean:
           	rm -f $(OBJS) $(LIB) $(SOLIB)
           JCMF
@@ -719,9 +726,24 @@ jobs:
           # flac: C++ configure 失败，touch stamp-h1 跳过
           touch "release/src/router/flac/stamp-h1" 2>/dev/null && echo "  flac stamp-h1 touched" || true
 
-          # dropbear: "No makefile found" — config.h 预复制不够，
-          # 还需预生成 stamp-h1 来完全跳过 configure
-          touch "release/src/router/dropbear/stamp-h1" 2>/dev/null && echo "  dropbear stamp-h1 touched" || true
+          # dropbear: configure 返回 77 因为 varargs.h 检测。
+          # 工具链已覆写 varargs.h，直接预运行 configure 生成 Makefile + config.h
+          echo "=== Pre-configuring dropbear ==="
+          DROPBEAR_DIR="release/src/router/dropbear"
+          if [ -d "$DROPBEAR_DIR" ] && [ ! -f "$DROPBEAR_DIR/Makefile" ]; then
+            (cd "$DROPBEAR_DIR" && ./configure \
+              --host=arm-buildroot-linux-gnueabi \
+              --disable-zlib --disable-pam \
+              CC=arm-buildroot-linux-gnueabi-gcc \
+              AR=arm-buildroot-linux-gnueabi-ar \
+              RANLIB=arm-buildroot-linux-gnueabi-ranlib \
+              CFLAGS="-Os" LDFLAGS="-Wl,--gc-sections" \
+              2>&1 | tail -2) || true
+            if [ -f "$DROPBEAR_DIR/config.h" ] && [ -f "$DROPBEAR_DIR/Makefile" ]; then
+              touch "$DROPBEAR_DIR/stamp-h1"
+              echo "  dropbear configured successfully"
+            fi
+          fi
 
           # Broadcom Makefile 缺少 config 生成 → 编译之间的依赖声明。
           # 两阶段：先跑 configure 生成配置文件，再全核编译。
