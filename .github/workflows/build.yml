@@ -580,7 +580,10 @@ jobs:
           # 伪造 stamp-h1 阻止 make 重新跑 configure
           # configure 还需生成 Makefile —— 从 Makefile.in 复制并清除 @VAR@
           if [ -f "$JSONC_DIR/Makefile.in" ] && [ ! -f "$JSONC_DIR/Makefile" ]; then
-            sed -e '/^@.*@/d' \
+            sed -e 's|\$(top_srcdir)|\$(srcdir)|g' \
+                -e 's|\$(top_builddir)|\$(srcdir)|g' \
+                -e 's|\$(srcdir)|.|g' \
+                -e '/^@.*@/d' \
                 -e '/^Makefile:.*config.status/d' \
                 -e 's/@SET_MAKE@//g' \
                 -e 's/@[A-Za-z_]*@//g' \
