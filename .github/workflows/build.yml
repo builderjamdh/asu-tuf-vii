@@ -592,12 +592,12 @@ jobs:
           SOLIB = libjson-c.so.2
           all: $(LIB) $(SOLIB)
           $(LIB): $(OBJS)
-          \t$(AR) rv $@ $^
-          \t$(RANLIB) $@
+          	$(AR) rv $@ $^
+          	$(RANLIB) $@
           $(SOLIB): $(OBJS)
-          \t$(CC) -shared -o $@ $^ -lm
+          	$(CC) -shared -o $@ $^ -lm
           clean:
-          \trm -f $(OBJS) $(LIB) $(SOLIB)
+          	rm -f $(OBJS) $(LIB) $(SOLIB)
           JCMF
           touch "$JSONC_DIR/stamp-h1"
           echo "=== json-c Makefile done ==="
@@ -697,7 +697,7 @@ jobs:
             mkdir -p "$GETDNS_DIR/build"
             cat > "$GETDNS_DIR/build/Makefile" << 'GEOF'
           all install clean:
-          \t@echo "getdns: skipped (pre-built stub)"
+          	@echo "getdns: skipped (pre-built stub)"
           GEOF
             echo "  getdns stub Makefile created"
           fi
