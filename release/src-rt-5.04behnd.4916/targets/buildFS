@@ -230,6 +230,7 @@ ln -s /var/dms.conf $ROOTFS/etc/dms.conf
 ln -s /var/ipsec/ipsec.conf $ROOTFS/etc/ipsec.conf
 ln -s /var/ipsec/racoon.conf $ROOTFS/etc/racoon.conf
 ln -s /var/ipsec/psk.txt $ROOTFS/etc/psk.txt
+mkdir -p $ROOTFS/etc/iproute2
 ln -s /var/iproute2/rt_tables $ROOTFS/etc/iproute2/rt_tables
 #ln -s /var/tmp $ROOTFS/tmp
 ln -s /var/samba $ROOTFS/etc/samba
