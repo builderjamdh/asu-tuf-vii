@@ -616,6 +616,25 @@ jobs:
             echo "  !! nvram prebuilt not found at $NV_PREBUILT"
           fi
 
+          # libcreduction 步骤检查 stage/lib 下是否有所有需要的 .so。
+          # 预编译库若不在该目录会被判定为缺失，复制过去。
+          echo "=== Pre-staging pre-built libraries to stage ==="
+          STAGE_LIB="$SRCDIR/arm-glibc/stage/lib"
+          mkdir -p "$STAGE_LIB"
+          for lib_pair in \
+            "release/src/router/libasc/prebuild/libasc.so" \
+            "release/src/router/protect_srv/lib/prebuild/libptcsrv.so" \
+            "release/src-rt-5.04behnd.4916/router-sysdep/wlan/nvram/prebuilt/libnvram.so" \
+            ; do
+            libname=$(basename "$lib_pair")
+            if [ -f "$lib_pair" ]; then
+              cp -f "$lib_pair" "$STAGE_LIB/$libname" 2>/dev/null || true
+              echo "  Copied $libname to $STAGE_LIB"
+            else
+              echo "  !! $lib_pair not found"
+            fi
+          done
+
           # libgpg-error: configure 生成的 config.h 缺少 PACKAGE 宏定义
           # 导致编译报 'PACKAGE' undeclared。手动预生成。
           echo "=== Pre-generating libgpg-error config.h ==="
