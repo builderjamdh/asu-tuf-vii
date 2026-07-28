@@ -725,7 +725,11 @@ jobs:
           DROPBEAR_DIR="release/src/router/dropbear"
           if [ -d "$DROPBEAR_DIR" ] && [ ! -f "$DROPBEAR_DIR/Makefile" ]; then
             (cd "$DROPBEAR_DIR" && CONFIG_SITE=/tmp/config.site \
-              ac_cv_prog_cc_works=yes CC=arm-buildroot-linux-gnueabi-gcc \
+              CC=arm-buildroot-linux-gnueabi-gcc \
+              AR=arm-buildroot-linux-gnueabi-ar \
+              RANLIB=arm-buildroot-linux-gnueabi-ranlib \
+              CFLAGS="-Os" \
+              LDFLAGS="-L$(pwd)/../shared -lshared" \
               ./configure --host=arm-buildroot-linux-gnueabi \
               --disable-zlib --disable-pam --disable-harden \
               --enable-openpty --enable-syslog --enable-shadow \
@@ -735,8 +739,6 @@ jobs:
               --disable-pututline --disable-pututxline \
               2>&1 | tail -3 || true)
             if [ -f "$DROPBEAR_DIR/config.h" ] && [ -f "$DROPBEAR_DIR/Makefile" ]; then
-              # 预生成 Makefile 缺少链接库路径 → 追加到 LIBS
-              echo 'LIBS += -L../shared -lshared -L../nvram -lnvram' >> "$DROPBEAR_DIR/Makefile"
               touch "$DROPBEAR_DIR/stamp-h1" && echo "  dropbear configured OK"
             fi
           fi
