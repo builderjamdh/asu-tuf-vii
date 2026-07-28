@@ -759,6 +759,10 @@ jobs:
             [ -f "$src" ] && cp -f "$src" "$dest" 2>/dev/null && echo "  $(basename $dest) staged"
           done
 
+      - name: Compile (two-phase)
+        run: |
+          CONFIGURE_OVERRIDE="./configure --disable-option-checking LD=$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-ld --host=arm-buildroot-linux-gnueabi"
+          export PATH="$TC_PATH/usr/bin:$PATH"
           # 两阶段：先跑 configure 生成配置文件，再全核编译。
           # -k 容忍 configure 阶段的竞态失败（阶段2会补齐）。
           echo "=== Pass 1/2: configure + deps (-j32) ==="
