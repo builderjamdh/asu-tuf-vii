@@ -600,6 +600,7 @@ jobs:
           	mkdir -p $(STAGEDIR)/usr/lib $(TOP)/json-c/.libs
           	cp -f $(LIB) $(SOLIB) $(STAGEDIR)/usr/lib/
           	cp -f $(SOLIB) $(TOP)/json-c/.libs/libjson-c.so
+          	cp -f $(SOLIB) $(TOP)/json-c/.libs/libjson-c.so.2.0.2
           	cp -f $(SOLIB) $(TOP)/json-c/.libs/libjson-c.so.2
           install: stage
           .PHONY: stage install
