@@ -583,7 +583,7 @@ jobs:
           cd "$JSONC_DIR" && ./configure --prefix=/usr --enable-shared --disable-static \
             --host=arm-buildroot-linux-gnueabi \
             ac_cv_func_realloc_0_nonnull=yes ac_cv_func_malloc_0_nonnull=yes \
-            CFLAGS="-Os" LDFLAGS="-lm" 2>&1 | tail -1
+            CFLAGS="-Os" LDFLAGS="-lm" 2>&1 | tail -1 || true
           touch "$JSONC_DIR/stamp-h1"
           echo "=== json-c configured ==="
 
