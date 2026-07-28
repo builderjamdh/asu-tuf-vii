@@ -594,6 +594,7 @@ jobs:
               fi
             done
           done
+          mkdir -p /tmp/varargs-stub
           cat > /tmp/varargs-stub/varargs.h << 'VAEOF'
           #include <stdarg.h>
           VAEOF
