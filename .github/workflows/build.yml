@@ -689,14 +689,6 @@ jobs:
             echo "  libgpg-error config.h pre-generated"
           fi
 
-          # dropbear: configure 检测到 varargs.h 问题返回 77。
-          # 仅预复制 config.h.in→config.h，不 touch stamp-h1，
-          # 这样 configure 检测到 config.h 已存在会简化部分测试。
-          echo "=== Pre-copy dropbear config.h ==="
-          if [ -f "release/src/router/dropbear/config.h.in" ] && [ ! -f "release/src/router/dropbear/config.h" ]; then
-            cp "release/src/router/dropbear/config.h.in" "release/src/router/dropbear/config.h"
-            echo "  dropbear config.h pre-copied"
-          fi
 
           # getdns: cmake cross-compile generate 失败。预创建简单 Makefile。
           echo "=== Pre-generating getdns build ==="
