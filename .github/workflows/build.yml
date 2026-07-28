@@ -617,6 +617,10 @@ jobs:
           fi
 
           # libcreduction 步骤检查所需 .so 是否在 INSTALL_DIR 或 TOOLCHAIN_TOP。
+
+          # iproute2 安装可能失败导致 etc/iproute2/ 目录缺失，
+          # 而 full_buildimage 需要在该目录创建 rt_tables 符号链接。
+          mkdir -p release/src-rt-5.04behnd.4916/targets/96764GW/fs/etc/iproute2 2>/dev/null || true
           # 将预编译的库复制到工具链 sysroot lib，确保 find -L 能找到。
           echo "=== Pre-staging pre-built libraries to toolchain sysroot ==="
           TC_SYSROOT_LIB="$TC_PATH/arm-buildroot-linux-gnueabi/sysroot/lib32"
