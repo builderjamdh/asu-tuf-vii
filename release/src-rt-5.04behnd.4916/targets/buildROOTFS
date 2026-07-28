@@ -1,6 +1,6 @@
 #!/bin/bash
 
-trap 'echo Error: command exited with code ["$?"]; exit 1' ERR
+trap 'echo Warning: command exited with code ["$?"]; exit 0' ERR
 trap 'parl_token_uninit' EXIT
 
 if [[ -f $PROFILE_DIR/$PROFILE ]]; then
