@@ -3471,7 +3471,7 @@ libwebapi/stamp-h1:
 
 libwebapi: libwebapi/stamp-h1 shared json-c
 	@$(SEP)
-	@$(MAKE) -C libwebapi CC=$(CC)
+	@$(MAKE) -j1 -C libwebapi CC=$(CC)
 
 libwebapi-install: libwebapi
 	@echo INSTALLDIR=$(INSTALLDIR)

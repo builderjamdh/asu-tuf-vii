@@ -719,7 +719,25 @@ jobs:
           # flac: C++ configure 失败，touch stamp-h1 跳过
           touch "release/src/router/flac/stamp-h1" 2>/dev/null && echo "  flac stamp-h1 touched" || true
 
-          # dropbear: 工具链 varargs.h 已覆写，让构建系统自然 run configure
+          # dropbear: configure 无论如何都 "C compiler cannot create executables"
+          # 预生成 config.h + Makefile，绕过 configure 步骤。
+          echo "=== Pre-configuring dropbear ==="
+          DROPBEAR_DIR="release/src/router/dropbear"
+          if [ -d "$DROPBEAR_DIR" ] && [ ! -f "$DROPBEAR_DIR/Makefile" ]; then
+            (cd "$DROPBEAR_DIR" && CONFIG_SITE=/tmp/config.site \
+              ac_cv_prog_cc_works=yes CC=arm-buildroot-linux-gnueabi-gcc \
+              ./configure --host=arm-buildroot-linux-gnueabi \
+              --disable-zlib --disable-pam --disable-harden \
+              --enable-openpty --enable-syslog --enable-shadow \
+              --enable-bundled-libtom --disable-lastlog \
+              --disable-utmp --disable-utmpx --disable-wtmp \
+              --disable-wtmpx --disable-loginfunc \
+              --disable-pututline --disable-pututxline \
+              2>&1 | tail -3 || true)
+            if [ -f "$DROPBEAR_DIR/config.h" ] && [ -f "$DROPBEAR_DIR/Makefile" ]; then
+              touch "$DROPBEAR_DIR/stamp-h1" && echo "  dropbear configured OK"
+            fi
+          fi
 
           # Broadcom Makefile 缺少 config 生成 → 编译之间的依赖声明。
           # 两阶段：先跑 configure 生成配置文件，再全核编译。
