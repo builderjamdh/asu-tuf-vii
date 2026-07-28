@@ -3416,7 +3416,7 @@ ifeq ($(HND_ROUTER_AX),y)
 	cd httpd && rm -f wlioctl.h && ln -sf $(SRCBASE_DHD)/../components/wlioctl/include/wlioctl.h wlioctl.h && rm -f bcmwifi_rates.h && ln -sf $(SRCBASE_DHD)/shared/bcmwifi/include/bcmwifi_rates.h bcmwifi_rates.h && rm -f wlioctl_defs.h && ln -sf $(SRCBASE_DHD)/../components/wlioctl/include/wlioctl_defs.h wlioctl_defs.h
 endif
 endif
-	$(MAKE) -C httpd
+	$(MAKE) -j1 -C httpd
 
 httpd-install:
 	$(MAKE) -C httpd INSTALLDIR=$(INSTALLDIR)/httpd install
