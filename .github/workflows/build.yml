@@ -752,6 +752,7 @@ jobs:
           for pair in \
             "cfg_mnt/prebuild/libcfgmnt.so:cfg_mnt/libcfgmnt.so" \
             "dnsqd/prebuild/libdns_app_client.so:dnsqd/libdns_app_client.so" \
+            "nt_center/lib/prebuild/libnt.so:nt_center/lib/libnt.so" \
             ; do
             src="release/src/router/${pair%%:*}"
             dest="release/src/router/${pair##*:}"
