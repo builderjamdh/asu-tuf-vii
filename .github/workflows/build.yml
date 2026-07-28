@@ -577,24 +577,30 @@ jobs:
           #define PACKAGE_VERSION "0.12.1"
           #define VERSION "0.12.1"
           JSONCEOF
-          # 伪造 stamp-h1 阻止 make 重新跑 configure
-          # configure 还需生成 Makefile —— 从 Makefile.in 复制并清除 @VAR@
-          if [ -f "$JSONC_DIR/Makefile.in" ] && [ ! -f "$JSONC_DIR/Makefile" ]; then
-            sed -e 's|\$(top_srcdir)|\$(srcdir)|g' \
-                -e 's|\$(top_builddir)|\$(srcdir)|g' \
-                -e 's|\$(srcdir)|.|g' \
-                -e '/^@.*@/d' \
-                -e 's/@SET_MAKE@//g' \
-                -e 's/@[A-Za-z_]*@//g' \
-                -e '/^\.\/config.status:/d' \
-                -e '/^\.\/configure:/d' \
-                -e '/^\$$(ACLOCAL_M4):/d' \
-                "$JSONC_DIR/Makefile.in" > "$JSONC_DIR/Makefile"
-            # 阻止 make 尝试重新生成 Makefile（依赖 aclocal.m4）
-            touch "$JSONC_DIR/aclocal.m4" "$JSONC_DIR/Makefile.in" 2>/dev/null || true
-          fi
+          # 手写最小 Makefile 直接编译 json-c，跳过 autotools 地狱
+          echo "=== Creating hand-crafted json-c Makefile ==="
+          cat > "$JSONC_DIR/Makefile" << 'JCMF'
+          CC = arm-buildroot-linux-gnueabi-gcc
+          AR = arm-buildroot-linux-gnueabi-ar
+          RANLIB = arm-buildroot-linux-gnueabi-ranlib
+          CFLAGS = -Os -fPIC -I.
+          SRCS = arraylist.c debug.c json_c_version.c json_object.c \
+                 json_object_iterator.c json_tokener.c json_util.c \
+                 libjson.c linkhash.c printbuf.c random_seed.c
+          OBJS = $(SRCS:.c=.o)
+          LIB = libjson-c.a
+          SOLIB = libjson-c.so.2
+          all: $(LIB) $(SOLIB)
+          $(LIB): $(OBJS)
+          \t$(AR) rv $@ $^
+          \t$(RANLIB) $@
+          $(SOLIB): $(OBJS)
+          \t$(CC) -shared -o $@ $^ -lm
+          clean:
+          \trm -f $(OBJS) $(LIB) $(SOLIB)
+          JCMF
           touch "$JSONC_DIR/stamp-h1"
-          echo "=== json-c configured ==="
+          echo "=== json-c Makefile done ==="
 
           # varargs.h 已被 GCC 废弃，但 db-4.8.30/dropbear 等包仍引用。
           # 直接覆盖工具链中的 varargs.h，重定向到 stdarg.h。
@@ -709,6 +715,13 @@ jobs:
           if [ -d "$WEBAPI_DIR" ] && [ ! -f "$WEBAPI_DIR/stamp-h1" ]; then
             touch "$WEBAPI_DIR/stamp-h1" && echo "  libwebapi stamp-h1 pre-created"
           fi
+
+          # flac: C++ configure 失败，touch stamp-h1 跳过
+          touch "release/src/router/flac/stamp-h1" 2>/dev/null && echo "  flac stamp-h1 touched" || true
+
+          # dropbear: "No makefile found" — config.h 预复制不够，
+          # 还需预生成 stamp-h1 来完全跳过 configure
+          touch "release/src/router/dropbear/stamp-h1" 2>/dev/null && echo "  dropbear stamp-h1 touched" || true
 
           # Broadcom Makefile 缺少 config 生成 → 编译之间的依赖声明。
           # 两阶段：先跑 configure 生成配置文件，再全核编译。
