@@ -740,13 +740,24 @@ jobs:
               --disable-pututline --disable-pututxline \
               2>&1 | tail -3 || true)
             if [ -f "$DROPBEAR_DIR/config.h" ] && [ -f "$DROPBEAR_DIR/Makefile" ]; then
-              echo 'LIBS += -L../shared -lshared -lcrypt' >> "$DROPBEAR_DIR/Makefile"
+              echo 'LIBS += -L../shared -lshared -L../nvram -lnvram -lcrypt' >> "$DROPBEAR_DIR/Makefile"
               echo 'LDFLAGS += -Wl,--gc-sections' >> "$DROPBEAR_DIR/Makefile"
               touch "$DROPBEAR_DIR/stamp-h1" && echo "  dropbear configured OK"
             fi
           fi
 
           # Broadcom Makefile 缺少 config 生成 → 编译之间的依赖声明。
+          # httpd 串行重编译需要这些预编译库已在位
+          echo "=== Pre-copy serial rebuild deps ==="
+          for pair in \
+            "cfg_mnt/prebuild/libcfgmnt.so:cfg_mnt/libcfgmnt.so" \
+            "dnsqd/prebuild/libdns_app_client.so:dnsqd/libdns_app_client.so" \
+            ; do
+            src="release/src/router/${pair%%:*}"
+            dest="release/src/router/${pair##*:}"
+            [ -f "$src" ] && cp -f "$src" "$dest" 2>/dev/null && echo "  $(basename $dest) staged"
+          done
+
           # 两阶段：先跑 configure 生成配置文件，再全核编译。
           # -k 容忍 configure 阶段的竞态失败（阶段2会补齐）。
           echo "=== Pass 1/2: configure + deps (-j32) ==="
