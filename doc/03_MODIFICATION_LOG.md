@@ -96,20 +96,8 @@
 - `doc/02_MODIFICATION_PLAN.md` (重写)
 
 **核心逻辑**:
-型号由 TUF-AX3000 V2 (BCM6756, WiFi 6) 修正为 TUF-BE3600 V2 (BCM6764, WiFi 7)。
+型号TUF-BE3600 V2 (BCM6764, WiFi 7)。
 交换机芯片由 BCM53134 修正为 Realtek RTL8372。
-
----
-
-### [2026-07-18] M02.0 rc_support 解锁 (TUF-AX3000 V2)
-
-**修改类型**: 修改
-
-**涉及文件**:
-- `release/src/router/rc/init.c` (17198-17230行 TUF-AX3000 V2 分支)
-
-**核心逻辑**:
-在 TUF-AX3000 V2 分支添加 tagged_based_vlan/mtlancfg/lacp/dfs/mumimo/smart_connect/reboot_schedule/dnsfilter/bwdpi/traffic_analyzer/dblog/dhdlog/email/nt_center/wireguard/ssh/snmp/ipv6 等 rc_support 标志。
 
 ---
 
