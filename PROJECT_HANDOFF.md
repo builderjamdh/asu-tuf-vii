@@ -98,25 +98,37 @@
 
 ### 2.3 完全缺失的目录（官方 tarball 中有）
 
-| 路径 | 说明 | 重要性 |
-|------|------|--------|
-| `bcmdrivers/broadcom/char/bcmprocfs` | BCM 进程文件系统 | 中 |
-| `bcmdrivers/broadcom/char/gpon` | GPON 驱动 | 低 (TUF 无 DSL) |
-| `bcmdrivers/broadcom/char/sata_test` | SATA 测试工具 | 低 |
-| `bcmdrivers/broadcom/char/tms` | TMS 驱动 | 中 |
-| `bcmdrivers/broadcom/char/xtmcfg` | XTM 配置 | 低 |
-| `bcmdrivers/broadcom/net/eapfwd` | EAP 转发器 | 中 |
-| **`bcmdrivers/broadcom/net/wl/impl105/main/components/phy/ac`** | **WiFi PHY AC 层** | **🔴🔴 极度关键** |
-| **`bcmdrivers/broadcom/net/wl/impl105/main/components/phy/cmn`** | **WiFi PHY 公共层** | **🔴🔴 极度关键** |
-| **`bcmdrivers/broadcom/net/wl/impl105/main/components/avs`** | **ASUS Wireless Security** | **🔴🔴 极度关键** |
-| **`bcmdrivers/broadcom/net/wl/impl105/main/components/clm-api`** | **信道列表管理** | **🔴🔴 极度关键** |
-| **`bcmdrivers/broadcom/net/wl/impl105/main/components/pasn`** | **认证服务** | **🔴🔴 极度关键** |
-| **`bcmdrivers/broadcom/net/wl/impl105/main/components/shared`** | **WiFi 共享组件** | **🔴🔴 极度关键** |
-| `bcmdrivers/broadcom/net/wl/impl105/main/components/apps/escand` | Escan 扫描 | 中 |
-| `bcmdrivers/broadcom/net/wl/impl105/main/components/apps/visualization` | WiFi 可视化 | 低 |
-| `bcmdrivers/broadcom/net/wl/impl105/main/components/apps/wldm` | WiFi 设备管理 | 中 |
+| 路径 | 说明 | 重要性 | 官方 tarball 状态 |
+|------|------|--------|------------------|
+| `bcmdrivers/broadcom/char/bcmprocfs` | BCM 进程文件系统 | 中 | ✅ 已同步（空目录） |
+| `bcmdrivers/broadcom/char/gpon` | GPON 驱动 | 低 (TUF 无 DSL) | ✅ 已同步（空目录） |
+| `bcmdrivers/broadcom/char/sata_test` | SATA 测试工具 | 低 | ✅ 已同步（空目录） |
+| `bcmdrivers/broadcom/char/tms` | TMS 驱动 | 中 | ✅ 已同步（空目录） |
+| `bcmdrivers/broadcom/char/xtmcfg` | XTM 配置 | 低 | ✅ 已同步（空目录） |
+| `bcmdrivers/broadcom/net/eapfwd` | EAP 转发器 | 中 | ✅ 已同步（空目录） |
+| **`bcmdrivers/broadcom/net/wl/impl105/main/components/phy/ac`** | **WiFi PHY AC 层** | **🔴🔴 极度关键** | ⚠️ 空目录占位符（50 个子目录，无文件） |
+| **`bcmdrivers/broadcom/net/wl/impl105/main/components/phy/cmn`** | **WiFi PHY 公共层** | **🔴🔴 极度关键** | ⚠️ 空目录占位符（51 个子目录，无文件） |
+| **`bcmdrivers/broadcom/net/wl/impl105/main/components/avs`** | **ASUS Wireless Security** | **🔴🔴 极度关键** | ⚠️ 空目录占位符（2 个子目录，无文件） |
+| **`bcmdrivers/broadcom/net/wl/impl105/main/components/clm-api`** | **信道列表管理** | **🔴🔴 极度关键** | ⚠️ 空目录占位符（2 个子目录，无文件） |
+| **`bcmdrivers/broadcom/net/wl/impl105/main/components/pasn`** | **认证服务** | **🔴🔴 极度关键** | ⚠️ 空目录占位符（2 个子目录，无文件） |
+| **`bcmdrivers/broadcom/net/wl/impl105/main/components/shared`** | **WiFi 共享组件** | **🔴🔴 极度关键** | ⚠️ 空目录占位符（4 个子目录，无文件） |
+| `bcmdrivers/broadcom/net/wl/impl105/main/components/apps/escand` | Escan 扫描 | 中 | ✅ 已同步（空目录） |
+| `bcmdrivers/broadcom/net/wl/impl105/main/components/apps/visualization` | WiFi 可视化 | 低 | ✅ 已同步（2 个子目录，无文件） |
+| `bcmdrivers/broadcom/net/wl/impl105/main/components/apps/wldm` | WiFi 设备管理 | 中 | ✅ 已同步（空目录） |
 
-### 2.4 部分缺失（官方 tarball 中有但 GitHub 不完整）
+> **重要发现**：官方 GPL tarball 中 phy/ac、phy/cmn、avs、clm-api、pasn、shared 等目录**都是空目录占位符**（只有子目录结构，没有 .c/.h/.mk 文件）。这些文件是 ASUS 内部闭源源码的一部分，不会出现在 GPL 发布版中。
+
+### 2.4 官方 tarball 限制
+
+| 限制 | 说明 |
+|------|------|
+| **bcmkernel/dts 缺失** | GPL 许可证限制，内核驱动源码不包含在 GPL tarball 中 |
+| **phy/ac、phy/cmn 为空** | WiFi PHY 层是闭源组件，GPL tarball 中只有空目录占位符 |
+| **avs、clm-api、pasn、shared 为空** | ASUS Wireless Security 和信道管理是闭源组件 |
+| **prebuilt .o 只有 6 个** | 80+ 个预编译 .o 文件是闭源二进制，不会出现在 GPL tarball 中 |
+| **hostTools 不完整** | 部分 hostTools（如 squashfs_4.2、cramfs、imgbin2hex）在 GPL tarball 中存在 |
+
+### 2.5 部分缺失（官方 tarball 中有但 GitHub 不完整）
 
 | 路径 | 官方 | GitHub | 缺失 |
 |------|------|--------|------|
@@ -770,6 +782,30 @@ configure: error: C compiler cannot create executables
 8. **DFS 信道指定套件**
 9. **主题系统**
 10. **Pro 高级功能选项**
+
+---
+
+## 十八、2026-07-29 工作进展
+
+### 已完成
+1. ✅ 生成 PROJECT_HANDOFF.md（覆盖 AI_HANDOFF.md 全部内容）
+2. ✅ 从官方 tarball 同步 16 个缺失目录到 GitHub 仓库
+3. ✅ 提交更改（commit 9be894559）
+
+### 关键发现
+
+**官方 GPL tarball 中 phy/ac、phy/cmn、avs、clm-api、pasn、shared 等目录都是空目录占位符！**
+
+这意味着：
+- GPL tarball 中只有目录结构（50+ 个子目录），没有 .c/.h/.mk 文件
+- 这些文件是 ASUS 内部闭源源码的一部分，不会出现在 GPL tarball 中
+- 第三方团队能编译出可用固件，是因为他们拥有完整的内部源码（包含所有预编译 .o 文件和闭源源码）
+
+### 下一步行动
+
+1. **获取 ASUS 内部完整源码**（从第三方团队或 ASUS）
+2. **或修改 platform.mak 跳过 prebuilt 依赖**（方案 C）
+3. **或尝试从其他 TUF-AX3000 V2 编译者的发布中获取**
 
 ---
 
