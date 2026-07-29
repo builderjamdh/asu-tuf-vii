@@ -312,6 +312,9 @@ jobs:
         run: |
           test "${{ inputs.clean }}" = "true" && make -C "$SRCDIR" clean || true
           export PATH="$TC_PATH/usr/bin:$PATH"
+          # Clear BRANCH so Makefile falls through to include ./router/extendno.conf,
+          # which contains the fixed EXTENDNO=39099 matching the official GPL tarball.
+          export BRANCH=
 
           # ---- 环境兼容性 ----
           # Debian 12+ GCC treats -Wimplicit-int as error.

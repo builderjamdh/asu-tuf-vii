@@ -244,6 +244,14 @@ endif
 
 ifeq ($(BRANCH),)
 include ./router/extendno.conf
+# BRANCH is empty (CI or external build). Use fixed EXTENDNO from extendno.conf
+# and append current repo's git hash + SDK/EXSTRING for traceability.
+EXSTRING:=$(LBSTRING)
+ifneq ($(FW_JUMP),)
+export EXTENDNO := $(FW_JUMP)-g$(shell git $(ASUSWRT_SRC_GIT) log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")$(SDKEXTEND)$(EXSTRING)
+else
+export EXTENDNO := $(EXTENDNO)-g$(shell git $(ASUSWRT_SRC_GIT) log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")$(SDKEXTEND)$(EXSTRING)
+endif
 else
 ifneq ($(EXTENDTYPE),)
 EXSTRING:=$(LBSTRING)-$(EXTENDTYPE)
