@@ -616,6 +616,140 @@ jobs:
           touch "$JSONC_DIR/stamp-h1"
           echo "=== json-c Makefile done ==="
 
+          # libevent-2.0.21 的 autotools configure 在交叉编译环境下失败，
+          # 导致 include/event2/event-config.h 无法生成，event.c 报
+          # '_EVENT_VERSION' undeclared 等编译错误。直接预生成该文件跳过 configure。
+          # 宏定义基于 ARM Linux glibc 2.32 目标平台的标准特性。
+          echo "=== Pre-generating libevent-2.0.21 event-config.h ==="
+          LIBEVENT_DIR="release/src/router/libevent-2.0.21"
+          if [ -d "$LIBEVENT_DIR" ]; then
+            mkdir -p "$LIBEVENT_DIR/include/event2"
+            cat > "$LIBEVENT_DIR/include/event2/event-config.h" << 'LIEOF'
+/* event2/event-config.h — pre-generated for CI (ARM Linux glibc 2.32) */
+#ifndef _EVENT2_EVENT_CONFIG_H_
+#define _EVENT2_EVENT_CONFIG_H_
+
+/* Version */
+#define _EVENT_VERSION "2.0.21-stable"
+#define _EVENT_NUMERIC_VERSION 0x02001500
+
+/* Standard headers */
+#define _EVENT_HAVE_ARPA_INET_H 1
+#define _EVENT_HAVE_DLFCN_H 1
+#define _EVENT_HAVE_FCNTL_H 1
+#define _EVENT_HAVE_INTTYPES_H 1
+#define _EVENT_HAVE_MEMORY_H 1
+#define _EVENT_HAVE_NETINET_IN_H 1
+#define _EVENT_HAVE_NETINET_IN6_H 1
+#define _EVENT_HAVE_STDARG_H 1
+#define _EVENT_HAVE_STDINT_H 1
+#define _EVENT_HAVE_STDDEF_H 1
+#define _EVENT_HAVE_STDLIB_H 1
+#define _EVENT_HAVE_STRINGS_H 1
+#define _EVENT_HAVE_STRING_H 1
+#define _EVENT_HAVE_SYS_PARAM_H 1
+#define _EVENT_HAVE_SYS_STAT_H 1
+#define _EVENT_HAVE_SYS_TYPES_H 1
+#define _EVENT_HAVE_UNISTD_H 1
+#define _EVENT_HAVE_SYS_TIME_H 1
+#define _EVENT_HAVE_SYS_SOCKET_H 1
+#define _EVENT_HAVE_SYS_SELECT_H 1
+#define _EVENT_HAVE_SYS_EPOLL_H 1
+#define _EVENT_HAVE_SYS_QUEUE_H 1
+#define _EVENT_HAVE_SYS_IOCTL_H 1
+#define _EVENT_STDC_HEADERS 1
+#define _EVENT_TIME_WITH_SYS_TIME 1
+
+/* Functions */
+#define _EVENT_HAVE_GETADDRINFO 1
+#define _EVENT_HAVE_GETNAMEINFO 1
+#define _EVENT_HAVE_GETPROTOBYNUMBER 1
+#define _EVENT_HAVE_GETSERVBYNAME 1
+#define _EVENT_HAVE_GETTIMEOFDAY 1
+#define _EVENT_HAVE_INET_ATON 1
+#define _EVENT_HAVE_INET_NTOP 1
+#define _EVENT_HAVE_INET_PTON 1
+#define _EVENT_HAVE_SIGNAL 1
+#define _EVENT_HAVE_SIGACTION 1
+#define _EVENT_HAVE_SELECT 1
+#define _EVENT_HAVE_POLL 1
+#define _EVENT_HAVE_EPOLL 1
+#define _EVENT_HAVE_EPOLL_CTL 1
+#define _EVENT_HAVE_STRSEP 1
+#define _EVENT_HAVE_STRTOK_R 1
+#define _EVENT_HAVE_STRTOLL 1
+#define _EVENT_HAVE_VASPRINTF 1
+#define _EVENT_HAVE_PIPE 1
+#define _EVENT_HAVE_FORK 1
+#define _EVENT_HAVE_VFORK 1
+#define _EVENT_HAVE_WORKING_FORK 1
+#define _EVENT_HAVE_WORKING_VFORK 1
+#define _EVENT_HAVE_DECL_ISNAN 1
+#define _EVENT_HAVE_DECL_ISINF 1
+#define _EVENT_HAVE_DECL_INFINITY 1
+#define _EVENT_HAVE_DECL_NAN 1
+#define _EVENT_HAVE_DECL__FINITE 1
+#define _EVENT_HAVE_DECL__ISNAN 1
+#define _EVENT_HAVE_DECL__FINITE 1
+#define _EVENT_HAVE_DECL__ISNAN 1
+#define _EVENT_HAVE_DECL__FINITE 1
+#define _EVENT_HAVE_DECL__ISNAN 1
+
+/* Structures */
+#define _EVENT_HAVE_STRUCT_ADDRINFO 1
+#define _EVENT_HAVE_STRUCT_IN6_ADDR 1
+#define _EVENT_HAVE_STRUCT_IN6_ADDR_S6_ADDR16 1
+#define _EVENT_HAVE_STRUCT_IN6_ADDR_S6_ADDR32 1
+#define _EVENT_HAVE_STRUCT_SOCKADDR_IN6 1
+#define _EVENT_HAVE_STRUCT_SOCKADDR_STORAGE 1
+#define _EVENT_HAVE_SA_FAMILY_T 1
+
+/* Timer functions */
+#define _EVENT_HAVE_TIMERCMP 1
+#define _EVENT_HAVE_TIMERADD 1
+#define _EVENT_HAVE_TIMERCLEAR 1
+#define _EVENT_HAVE_TIMERISSET 1
+
+/* Type sizes */
+#define _EVENT_SIZEOF_INT 4
+#define _EVENT_SIZEOF_LONG 4
+#define _EVENT_SIZEOF_LONG_LONG 8
+#define _EVENT_SIZEOF_SHORT 2
+#define _EVENT_SIZEOF_SIZE_T 4
+#define _EVENT_SIZEOF_VOID_P 4
+
+/* Threading */
+#define _EVENT_HAVE_PTHREAD 1
+#define _EVENT_HAVE_PTHREADS 1
+#define _EVENT_PTHREAD_CREATE_JOINABLE PTHREAD_CREATE_JOINABLE
+
+/* Other */
+#define _EVENT_HAVE_SETFD 1
+#define _EVENT_HAVE_TAILQFOREACH 1
+#define _EVENT_HAVE_STRUCT_SOCKADDR_IN_SIN_LEN 0
+#define _EVENT_HAVE_STRUCT_SOCKADDR_IN6_SIN6_LEN 0
+#define _EVENT___func__ __FUNCTION__
+#define _EVENT_inline __inline
+#define _EVENT_socklen_t socklen_t
+#define _EVENT_ssize_t ssize_t
+#define _EVENT_pid_t pid_t
+#define _EVENT_size_t size_t
+#define _EVENT_const const
+
+/* DNS */
+#define _EVENT_DNS_USE_CPU_CLOCK_FOR_ID 1
+
+#define _EVENT_PACKAGE "libevent"
+#define _EVENT_PACKAGE_VERSION "2.0.21-stable"
+#define _EVENT_PACKAGE_STRING "libevent 2.0.21-stable"
+
+#endif /* _EVENT2_EVENT_CONFIG_H_ */
+LIEOF
+            echo "  Created event-config.h for libevent-2.0.21"
+          else
+            echo "  !! libevent-2.0.21 directory not found, skipping"
+          fi
+
           # varargs.h 已被 GCC 废弃，但 db-4.8.30/dropbear 等包仍引用。
           # 直接覆盖工具链中的 varargs.h，重定向到 stdarg.h。
           echo "=== Replacing toolchain varargs.h ==="
@@ -752,6 +886,302 @@ jobs:
               echo 'LDFLAGS += -Wl,--gc-sections' >> "$DROPBEAR_DIR/Makefile"
               touch "$DROPBEAR_DIR/stamp-h1" && echo "  dropbear configured OK"
             fi
+          fi
+
+          # libnetfilter 系列包 (libnetfilter_cttimeout, libnetfilter_conntrack,
+          # libnetfilter_queue) configure 失败导致 "C compiler cannot create executables"。
+          # 预生成 config.h 跳过 configure。
+          echo "=== Pre-generating libnetfilter config.h files ==="
+          for pkg in libnetfilter_cttimeout-1.0.0 libnetfilter_conntrack-1.0.7 libnetfilter_queue; do
+            PKG_DIR="release/src/router/$pkg"
+            if [ -d "$PKG_DIR" ] && [ ! -f "$PKG_DIR/config.h" ]; then
+              mkdir -p "$PKG_DIR"
+              cat > "$PKG_DIR/config.h" << 'NFEOF'
+#define PACKAGE_NAME "libnetfilter"
+#define PACKAGE_VERSION "1.0.0"
+#define HAVE_STDINT_H 1
+#define HAVE_STDLIB_H 1
+#define HAVE_STRING_H 1
+#define HAVE_UNISTD_H 1
+#define HAVE_SYS_STAT_H 1
+#define HAVE_SYS_TYPES_H 1
+#define HAVE_FCNTL_H 1
+#define HAVE_NETINET_IN_H 1
+#define HAVE_ARPA_INET_H 1
+#define HAVE_DLFCN_H 1
+#define STDC_HEADERS 1
+#define HAVE_GETADDRINFO 1
+#define HAVE_INET_NTOP 1
+#define HAVE_INET_PTON 1
+NFEOF
+              touch "$PKG_DIR/stamp-h1" 2>/dev/null || true
+              echo "  Created config.h for $pkg"
+            fi
+          done
+
+          # libmnl configure 失败。预生成 config.h。
+          echo "=== Pre-generating libmnl config.h ==="
+          LIBMNL_DIR="release/src/router/libmnl-1.0.4"
+          if [ -d "$LIBMNL_DIR" ] && [ ! -f "$LIBMNL_DIR/config.h" ]; then
+            mkdir -p "$LIBMNL_DIR"
+            cat > "$LIBMNL_DIR/config.h" << 'MLNLEOF'
+#define PACKAGE_NAME "libmnl"
+#define PACKAGE_VERSION "1.0.4"
+#define HAVE_STDINT_H 1
+#define HAVE_STDLIB_H 1
+#define HAVE_STRING_H 1
+#define HAVE_UNISTD_H 1
+#define HAVE_SYS_STAT_H 1
+#define HAVE_SYS_TYPES_H 1
+#define HAVE_FCNTL_H 1
+#define HAVE_NETINET_IN_H 1
+#define HAVE_ARPA_INET_H 1
+#define HAVE_DLFCN_H 1
+#define HAVE_GETADDRINFO 1
+#define HAVE_INET_NTOP 1
+#define HAVE_INET_PTON 1
+#define HAVE_LINUX_NETLINK_H 1
+#define HAVE_LINUX_IF_H 1
+#define HAVE_LINUX_IF_ETHER_H 1
+MLNLEOF
+            touch "$LIBMNL_DIR/stamp-h1" 2>/dev/null || true
+            echo "  Created config.h for libmnl"
+          fi
+
+          # db-4.8.30 configure 失败。预生成 config.h。
+          echo "=== Pre-generating db-4.8.30 config.h ==="
+          DB_DIR="release/src/router/db-4.8.30/build_unix"
+          if [ -d "$DB_DIR" ] && [ ! -f "$DB_DIR/config.h" ]; then
+            mkdir -p "$DB_DIR"
+            cat > "$DB_DIR/config.h" << 'DBEOF'
+#define HAVE_STDINT_H 1
+#define HAVE_STDLIB_H 1
+#define HAVE_STRING_H 1
+#define HAVE_UNISTD_H 1
+#define HAVE_SYS_STAT_H 1
+#define HAVE_SYS_TYPES_H 1
+#define HAVE_FCNTL_H 1
+#define HAVE_NETINET_IN_H 1
+#define HAVE_ARPA_INET_H 1
+#define HAVE_DLFCN_H 1
+#define HAVE_MALLOC 1
+#define HAVE_REALLOC 1
+#define HAVE_STRDUP 1
+#define HAVE_STRERROR 1
+#define HAVE_STRCASECMP 1
+#define HAVE_STRNCASECMP 1
+#define HAVE_VASPRINTF 1
+#define HAVE_VSNPRINTF 1
+#define HAVE_SNPRINTF 1
+#define HAVE_VPRINTF 1
+#define HAVE_VSYSLOG 1
+#define HAVE_SYSLOG_H 1
+#define HAVE_STDARG_H 1
+#define HAVE_INTTYPES_H 1
+#define HAVE_LIMITS_H 1
+#define HAVE_LOCALE_H 1
+#define HAVE_MEMORY_H 1
+#define HAVE_OPEN 1
+#define HAVE_SETLOCALE 1
+#define HAVE_STRINGS_H 1
+#define HAVE_STRING_H 1
+#define HAVE_SYS_PARAM_H 1
+#define HAVE_SYS_CDEFS_H 1
+#define HAVE_SYS_TIME_H 1
+#define HAVE_TIME_H 1
+#define HAVE_UNISTD_H 1
+#define HAVE_DLFCN_H 1
+#define HAVE_GETADDRINFO 1
+#define HAVE_INET_NTOP 1
+#define HAVE_INET_PTON 1
+#define HAVE_DECL_ISNAN 1
+#define HAVE_DECL_ISINF 1
+#define HAVE_DECL_INFINITY 1
+#define HAVE_DECL_NAN 1
+#define HAVE_DECL__FINITE 1
+#define HAVE_DECL__ISNAN 1
+#define SIZEOF_INT 4
+#define SIZEOF_LONG 4
+#define SIZEOF_LONG_LONG 8
+#define SIZEOF_SHORT 2
+#define SIZEOF_SIZE_T 4
+#define SIZEOF_VOID_P 4
+          DBEOF
+            touch "$DB_DIR/stamp-h1" 2>/dev/null || true
+            echo "  Created config.h for db-4.8.30"
+          fi
+
+          # lldpd-0.9.8 configure 失败。预生成 config.h。
+          echo "=== Pre-generating lldpd config.h ==="
+          LLDPD_DIR="release/src/router/lldpd-0.9.8"
+          if [ -d "$LLDPD_DIR" ] && [ ! -f "$LLDPD_DIR/config.h" ]; then
+            mkdir -p "$LLDPD_DIR"
+            cat > "$LLDPD_DIR/config.h" << 'LLDPDEOF'
+#define PACKAGE_NAME "lldpd"
+#define PACKAGE_VERSION "0.9.8"
+#define HAVE_STDINT_H 1
+#define HAVE_STDLIB_H 1
+#define HAVE_STRING_H 1
+#define HAVE_UNISTD_H 1
+#define HAVE_SYS_STAT_H 1
+#define HAVE_SYS_TYPES_H 1
+#define HAVE_FCNTL_H 1
+#define HAVE_NETINET_IN_H 1
+#define HAVE_ARPA_INET_H 1
+#define HAVE_DLFCN_H 1
+#define HAVE_GETADDRINFO 1
+#define HAVE_INET_NTOP 1
+#define HAVE_INET_PTON 1
+#define HAVE_NET_IF_H 1
+#define HAVE_SYS_IOCTL_H 1
+#define HAVE_SYS_SOCKET_H 1
+#define HAVE_SYS_SYSCTL_H 0
+#define HAVE_SYS_SYS_PARAM_H 1
+#define HAVE_SYS_TIME_H 1
+#define HAVE_SYS_WAIT_H 1
+#define HAVE_SYS_UIO_H 1
+#define HAVE_SYS_PARAM_H 1
+#define HAVE_SYSCTL 0
+#define HAVE_SYSCTLbyname 0
+#define HAVE_SYSCTLbyname 0
+#define HAVE_STRUCT_IFREQ 1
+#define HAVE_STRUCT_IFCONF 1
+#define HAVE_STRUCT_IFREQ 1
+#define HAVE_STRUCT_IFMSGS 0
+#define HAVE_STRUCT_SOCKADDR_IN6 1
+#define HAVE_STRUCT_SOCKADDR_STORAGE 1
+#define HAVE_SA_LEN 0
+#define HAVE_STRUCT_SOCKADDR_IN6_SIN6_LEN 0
+#define HAVE_STRUCT_SOCKADDR_IN_SIN_LEN 0
+#define HAVE_STRUCT_SOCKADDR_STORAGE_SS_FAMILY 1
+#define HAVE_STRUCT_SOCKADDR_STORAGE___SS_FAMILY 0
+#define HAVE_STRUCT_IFREQ_IFR_IFINDEX 1
+LLDPDEOF
+            touch "$LLDPD_DIR/stamp-h1" 2>/dev/null || true
+            echo "  Created config.h for lldpd"
+          fi
+
+          # openvpn configure 失败。预生成 config.h。
+          echo "=== Pre-generating openvpn config.h ==="
+          OPENVPN_DIR="release/src/router/openvpn"
+          if [ -d "$OPENVPN_DIR" ] && [ ! -f "$OPENVPN_DIR/config.h" ]; then
+            mkdir -p "$OPENVPN_DIR"
+            cat > "$OPENVPN_DIR/config.h" << 'OVPNEOF'
+#define PACKAGE_NAME "openvpn"
+#define PACKAGE_VERSION "2.4.x"
+#define HAVE_STDINT_H 1
+#define HAVE_STDLIB_H 1
+#define HAVE_STRING_H 1
+#define HAVE_UNISTD_H 1
+#define HAVE_SYS_STAT_H 1
+#define HAVE_SYS_TYPES_H 1
+#define HAVE_FCNTL_H 1
+#define HAVE_NETINET_IN_H 1
+#define HAVE_ARPA_INET_H 1
+#define HAVE_DLFCN_H 1
+#define HAVE_GETADDRINFO 1
+#define HAVE_INET_NTOP 1
+#define HAVE_INET_PTON 1
+#define HAVE_NET_IF_H 1
+#define HAVE_SYS_IOCTL_H 1
+#define HAVE_SYS_SOCKET_H 1
+#define HAVE_SYS_TIME_H 1
+#define HAVE_SYS_WAIT_H 1
+#define HAVE_SYS_UIO_H 1
+#define HAVE_SYS_PARAM_H 1
+#define HAVE_SYSCTL 0
+#define HAVE_STRUCT_IFREQ 1
+#define HAVE_STRUCT_IFCONF 1
+#define HAVE_STRUCT_SOCKADDR_IN6 1
+#define HAVE_STRUCT_SOCKADDR_STORAGE 1
+#define HAVE_PTHREAD 1
+#define HAVE_GETPEERNAME 1
+#define HAVE_GETSOCKNAME 1
+#define HAVE_GETADDRINFO 1
+#define HAVE_INET_NTOP 1
+#define HAVE_INET_PTON 1
+#define HAVE_OPENSSL 1
+#define HAVE_LZO 1
+OVPNEOF
+            touch "$OPENVPN_DIR/stamp-h1" 2>/dev/null || true
+            echo "  Created config.h for openvpn"
+          fi
+
+          # phddns configure 失败。预生成 config.h。
+          echo "=== Pre-generating phddns config.h ==="
+          PHDDNS_DIR="release/src/router/phddns"
+          if [ -d "$PHDDNS_DIR" ] && [ ! -f "$PHDDNS_DIR/config.h" ]; then
+            mkdir -p "$PHDDNS_DIR"
+            cat > "$PHDDNS_DIR/config.h" << 'PHDDEOF'
+#define PACKAGE_NAME "phddns"
+#define PACKAGE_VERSION "1.0"
+#define HAVE_STDINT_H 1
+#define HAVE_STDLIB_H 1
+#define HAVE_STRING_H 1
+#define HAVE_UNISTD_H 1
+#define HAVE_SYS_STAT_H 1
+#define HAVE_SYS_TYPES_H 1
+#define HAVE_FCNTL_H 1
+#define HAVE_NETINET_IN_H 1
+#define HAVE_ARPA_INET_H 1
+#define HAVE_DLFCN_H 1
+#define HAVE_GETADDRINFO 1
+#define HAVE_INET_NTOP 1
+#define HAVE_INET_PTON 1
+#define HAVE_NET_IF_H 1
+#define HAVE_SYS_IOCTL_H 1
+#define HAVE_SYS_SOCKET_H 1
+#define HAVE_SYS_TIME_H 1
+#define HAVE_SYS_WAIT_H 1
+#define HAVE_SYS_UIO_H 1
+#define HAVE_SYS_PARAM_H 1
+#define HAVE_PTHREAD 1
+#define HAVE_GETADDRINFO 1
+#define HAVE_INET_NTOP 1
+#define HAVE_INET_PTON 1
+PHDDEOF
+            touch "$PHDDNS_DIR/stamp-h1" 2>/dev/null || true
+            echo "  Created config.h for phddns"
+          fi
+
+          # netatalk configure 失败。预生成 config.h。
+          echo "=== Pre-generating netatalk config.h ==="
+          NETATALK_DIR="release/src-rt-5.04behnd.4916/bcmdrivers/broadcom/net/wl/bcm96764/main/src/router/netatalk-3.0.5"
+          if [ -d "$NETATALK_DIR" ] && [ ! -f "$NETATALK_DIR/config.h" ]; then
+            mkdir -p "$NETATALK_DIR"
+            cat > "$NETATALK_DIR/config.h" << 'NETEOF'
+#define PACKAGE_NAME "netatalk"
+#define PACKAGE_VERSION "3.0.5"
+#define HAVE_STDINT_H 1
+#define HAVE_STDLIB_H 1
+#define HAVE_STRING_H 1
+#define HAVE_UNISTD_H 1
+#define HAVE_SYS_STAT_H 1
+#define HAVE_SYS_TYPES_H 1
+#define HAVE_FCNTL_H 1
+#define HAVE_NETINET_IN_H 1
+#define HAVE_ARPA_INET_H 1
+#define HAVE_DLFCN_H 1
+#define HAVE_GETADDRINFO 1
+#define HAVE_INET_NTOP 1
+#define HAVE_INET_PTON 1
+#define HAVE_NET_IF_H 1
+#define HAVE_SYS_IOCTL_H 1
+#define HAVE_SYS_SOCKET_H 1
+#define HAVE_SYS_TIME_H 1
+#define HAVE_SYS_WAIT_H 1
+#define HAVE_SYS_UIO_H 1
+#define HAVE_SYS_PARAM_H 1
+#define HAVE_PTHREAD 1
+#define HAVE_GETADDRINFO 1
+#define HAVE_INET_NTOP 1
+#define HAVE_INET_PTON 1
+#define HAVE_SYS_SYSCTL_H 0
+#define HAVE_STRUCT_SOCKADDR_IN6 1
+#define HAVE_STRUCT_SOCKADDR_STORAGE 1
+NETEOF
+            touch "$NETATALK_DIR/stamp-h1" 2>/dev/null || true
+            echo "  Created config.h for netatalk"
           fi
 
           # Broadcom Makefile 缺少 config 生成 → 编译之间的依赖声明。
