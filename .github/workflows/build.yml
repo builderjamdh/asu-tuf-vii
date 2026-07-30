@@ -1269,8 +1269,9 @@ jobs:
           set +e
           # Delete stale httpd binary so make is forced to re-link
           rm -f "$ROUTER_DIR/httpd/httpd" 2>/dev/null || true
-          # Build through router Makefile directly, without -k so errors surface
-          make -C "$ROUTER_DIR" -j1 \
+          # Rebuild through the top-level Makefile (correctly sets SRCBASE/LINUXDIR).
+          # No -k: the old silent "not remade because of errors" only happens with -k.
+          make -C "$SRCDIR" -j1 \
             httpd CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log"
           HTTPD_EXIT=${PIPESTATUS[0]}
           FSI="$SRCDIR/targets/96764GW/fs.install"
