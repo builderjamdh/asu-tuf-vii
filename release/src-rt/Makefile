@@ -7025,7 +7025,7 @@ ifeq ($(CONFIG_RALINK),y)
 	fi
 endif
 
-	@$(MAKE) setprofile
+	-@$(MAKE) setprofile
 	$(MAKE) all
 
 ifeq ($(REALTEK),y)
