@@ -24,7 +24,7 @@ ifeq ($(RTCONFIG_BCMARM),y)
 CFLAGS += -I$(SRCBASE)/shared/bcmwifi/include -DTYPEDEF_FLOAT_T
 endif
 
-all: libcodb.so
+all: clean libcodb.so
 
 .c.o:
 	$(CC) -c $*.c $(CFLAGS)
