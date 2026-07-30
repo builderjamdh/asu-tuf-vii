@@ -333,7 +333,6 @@ jobs:
           # on the host, which fails for an ARM cross-compiler.
           SYSROOT=$("$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-gcc" -print-sysroot 2>/dev/null || echo "")
           printf '%s\n' \
-            "ac_precious_vars=" \
             "ac_cv_prog_cc_works=yes" \
             "ac_cv_prog_cc_cross=yes" \
             "ac_cv_prog_cxx_works=yes" \
@@ -378,14 +377,6 @@ jobs:
             "ac_cv_prog_gxx=yes" \
             "ac_cv_prog_cc_g=yes" \
             "ac_cv_prog_cxx_g=yes" \
-            "ac_cv_env_CPPFLAGS_set=set" \
-            "ac_cv_env_CPPFLAGS_value=" \
-            "ac_cv_env_LDFLAGS_set=set" \
-            "ac_cv_env_LDFLAGS_value=" \
-            "ac_cv_env_LIBS_set=set" \
-            "ac_cv_env_LIBS_value=" \
-            "ac_cv_env_CFLAGS_set=set" \
-            "ac_cv_env_CFLAGS_value=" \
             "ac_cv_build=x86_64-pc-linux-gnu" \
             "ac_cv_host=arm-buildroot-linux-gnueabi" \
             "ac_cv_target=arm-buildroot-linux-gnueabi" \
@@ -497,13 +488,9 @@ jobs:
           # platform.mak 定义 CONFIGURE := ./configure LD=... --host=...
           # CONFIGURE_OVERRIDE 覆盖它注入 --disable-option-checking，处理
           # configure 命令行 unrecognized-options 检查。
-          # "CFLAGS has changed" 的缓存一致性检查由 config.site 中
-          # ac_precious_vars="" 处理（见上方 config.site 生成）。
+           # CFLAGS/CPPFLAGS/LDFLAGS 不缓存，由环境传入 configure，
+          # 避免两阶段 build 中 "CFLAGS has changed" 报错。
           CONFIGURE_OVERRIDE="./configure --disable-option-checking LD=$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-ld --host=arm-buildroot-linux-gnueabi"
-
-          # config.site 中的 ac_precious_vars="" 直接从源头跳过 autotools
-          # 的缓存一致性检查循环——该循环不受 enable_option_checking 或
-          # --disable-option-checking 控制，是 configure 脚本内硬编码的。
 
           # 自托管 runner 可能残留上次构建的 autotools 状态文件。
           # autoreconf 会在内部不带 CFLAGS 先跑一次 configure，
@@ -1202,9 +1189,8 @@ jobs:
           echo "=== Pass 1/2: configure + deps (-j32) ==="
           FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j32 -k -s \
             CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee "$SRCDIR/build.log"
-          # 阶段1 中 autoreconf → configure 的内部调用链会留下
-          # 空值 config.status，导致同一个包的正式 configure 失败。
-          # ac_precious_vars="" 已从源头解决竞态，不再需要删除 config.status。
+           # autoreconf → configure 的内部链会留下空值 config.status，
+          # 但 config.site 缓存了编译器检测结果，重复 configure 不会再报错。
           # 成功编译的包需要 config.status 来维护 Makefile 时效性，
           # 删除会导致 Phase 2 出现 "config.status: No such file" Error 127。
           echo "=== Pass 2/2: parallel compile (-j32) ==="
