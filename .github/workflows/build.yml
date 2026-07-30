@@ -1215,7 +1215,32 @@ jobs:
           # 必须先于 Phase 1 生成 version.h。
           # setprofile 失败会阻断 bin -> all -> rt_ver 链路，
           # 导致 defaults.c/version.c 等关键文件因缺 version.h 编译失败。
-          make -C "$SRCDIR" rt_ver 2>&1 | tee -a "$SRCDIR/build.log"
+          # 不能用 make rt_ver（它会触发完整 Makefile 解析破坏 chip_profile），
+          # 而是直接照 Makefile rt_ver 目标的逻辑手写 header。
+          . "$SRCDIR/version.conf"
+          . "$SRCDIR/router/extendno.conf"
+          BUILD_USER="$(whoami)"
+          BUILD_INFO="$(hostname)"
+          BUILD_TIME="$(date)"
+          SERIALNO="${SERIALNO:-102}"
+          RCNO="${RCNO:-2}"
+          EXTENDNO="${EXTENDNO:-39099}"
+          cat > "$SRCDIR/router/shared/version.h" << VEREOF
+          #ifndef RTVERSION
+          #define RT_MAJOR_VERSION "${KERNEL_VER}"
+          #define RT_MINOR_VERSION "${FS_VER}"
+          #define RT_VERSION "${KERNEL_VER}.${FS_VER}"
+          #define RT_SERIALNO "${SERIALNO}"
+          #define RT_RCNO "${RCNO}"
+          #define RT_EXTENDNO "${EXTENDNO}"
+          #define RT_SWPJVERNO ""
+          #define RT_BUILD_NAME "${BUILD_USER}"
+          #define RT_BUILD_NAME_SEC "${BUILD_INFO}"
+          #define RT_BUILD_INFO "${BUILD_TIME} ${BUILD_USER}@${BUILD_INFO}"
+          #define RT_CUSTOM_MODEL ""
+          #endif
+          VEREOF
+          echo "version.h pre-generated"
           echo "=== Pass 1/2: configure + deps (-j32) ==="
           FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j32 -k -s \
             CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log"
