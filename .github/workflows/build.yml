@@ -308,9 +308,8 @@ jobs:
             done
           fi
 
-      - name: Build Firmware
+      - name: Setup Environment and Pre-generate Core Headers
         run: |
-          test "${{ inputs.clean }}" = "true" && make -C "$SRCDIR" clean || true
           export PATH="$TC_PATH/usr/bin:$PATH"
           # Clear BRANCH so Makefile falls through to include ./router/extendno.conf,
           # which contains the fixed EXTENDNO=39099 matching the official GPL tarball.
@@ -748,10 +747,17 @@ jobs:
 
           # varargs.h 已被 GCC 废弃，但 db-4.8.30/dropbear 等包仍引用。
           # 直接覆盖工具链中的 varargs.h，重定向到 stdarg.h。
+
+      - name: Pre-generate Additional Package Configs
+        run: |
+          export PATH="$TC_PATH/usr/bin:$PATH"
+          export CONFIG_SITE=/tmp/config.site
+
+          # varargs.h: redirect to stdarg.h
           echo "=== Replacing toolchain varargs.h ==="
-          # varargs.h 原文是 #error "Revise your code to use <stdarg.h>."
-          # 旧代码 grep -q "stdarg.h" 会匹配到 error 消息里的 stdarg.h，
-          # 误认为已经 patch 过而跳过。改为检查是否已包含 #include 行。
+          # varargs.h original: #error "Revise your code to use <stdarg.h>."
+          # Old grep matched "stdarg.h" in the error message, skipping
+          # Check for #include line instead
           for tc in "$TC_PATH" "/opt/toolchains/$TC_NAME_ARMTF" "/opt/toolchains/$TC_NAME_OPTEE"; do
             VH="$tc/lib/gcc/arm-buildroot-linux-gnueabi/*/include/varargs.h"
             for f in $VH; do
@@ -772,9 +778,9 @@ jobs:
           export CXXFLAGS="-I/tmp/varargs-stub $CXXFLAGS"
           export CPPFLAGS="-I/tmp/varargs-stub $CPPFLAGS"
 
-          # nvram 预编译库路径不匹配 LDFLAGS 中的 -L 路径。
-          # LDFLAGS 指向 router-sysdep/nvram_arm/ 但实际在
-          # router-sysdep/wlan/nvram/prebuilt/。复制过去。
+          # nvram prebuilt path mismatch with LDFLAGS -L path
+          # LDFLAGS points to router-sysdep/nvram_arm/ but actual in
+          # router-sysdep/wlan/nvram/prebuilt/. Copy there.
           echo "=== Pre-staging nvram library ==="
           NV_PREBUILT="$SRCDIR/router-sysdep/wlan/nvram/prebuilt/libnvram.so"
           NV_DEST="$SRCDIR/router-sysdep/nvram_arm/"
