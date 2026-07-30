@@ -1195,6 +1195,8 @@ jobs:
         run: |
           CONFIGURE_OVERRIDE="./configure --disable-option-checking LD=$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-ld --host=arm-buildroot-linux-gnueabi"
           export PATH="$TC_PATH/usr/bin:$PATH"
+          # CONFIG_SITE 让 cross-compile configure 跳过会导致"cannot create executables"的本地测试
+          export CONFIG_SITE=/tmp/config.site
           # 两阶段：先跑 configure 生成配置文件，再全核编译。
           # -k 容忍 configure 阶段的竞态失败（阶段2会补齐）。
           echo "=== Pass 1/2: configure + deps (-j32) ==="
@@ -1214,8 +1216,11 @@ jobs:
 
           # Phase 2 并行构建中 httpd/dropbear 的依赖库竞态无法完全消除。
           # 在所有包构建完成后串行重编译，手动安装绕过 install 步骤问题。
+          # 先清除过期的 stamp-h1（make 认为已更新但 .so 已被 clean），强制重编。
           echo "=== Serial rebuild: httpd ==="
           set +e
+          rm -f "$SRCDIR/router/libwebapi/stamp-h1"
+          rm -f "$SRCDIR/router/libcodb/stamp-h1"
           make -C "$SRCDIR" -j1 -k \
             httpd CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
           HTTPD_BIN="$SRCDIR/router/httpd/httpd"
