@@ -1212,9 +1212,13 @@ jobs:
           export CONFIG_SITE=/tmp/config.site
           # 两阶段：先跑 configure 生成配置文件，再全核编译。
           # -k 容忍 configure 阶段的竞态失败（阶段2会补齐）。
+          # 必须先于 Phase 1 生成 version.h。
+          # setprofile 失败会阻断 bin -> all -> rt_ver 链路，
+          # 导致 defaults.c/version.c 等关键文件因缺 version.h 编译失败。
+          make -C "$SRCDIR" rt_ver 2>&1 | tee -a "$SRCDIR/build.log"
           echo "=== Pass 1/2: configure + deps (-j32) ==="
           FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j32 -k -s \
-            CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee "$SRCDIR/build.log"
+            CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log"
            # autoreconf → configure 的内部链会留下空值 config.status，
           # 但 config.site 缓存了编译器检测结果，重复 configure 不会再报错。
           # 成功编译的包需要 config.status 来维护 Makefile 时效性，

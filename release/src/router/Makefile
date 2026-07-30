@@ -6610,7 +6610,7 @@ flac/stamp-h1: libogg
 	LDFLAGS="-L$(TOP)/libogg/src/.libs -fPIC -ffunction-sections -fdata-sections -Wl,--gc-sections" \
 	$(CONFIGURE) --enable-shared --enable-static --prefix='' --disable-rpath \
 		--disable-doxygen-docs --disable-xmms-plugin --disable-cpplibs \
-		--without-libiconv-prefix --disable-altivec --disable-3dnow --disable-sse
+		--without-libiconv-prefix --disable-altivec --disable-3dnow --disable-sse --disable-dependency-tracking
 	touch $@
 
 flac: flac/stamp-h1 libogg
