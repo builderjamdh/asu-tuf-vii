@@ -1269,6 +1269,16 @@ jobs:
           set +e
           # Delete stale httpd binary so make is forced to re-link
           rm -f "$ROUTER_DIR/httpd/httpd" 2>/dev/null || true
+          # curl target's recipe runs "sed -i $(STAGEDIR)/usr/lib/libcurl.la".
+          # If curl's libtool archive doesn't exist the sed fails and the
+          # curl target error cascades through nt_center → wb → curl, making
+          # httpd unreachable.  Create a dummy stub so the sed is a no-op.
+          STAGEDIR=$(find "$SRCDIR/bcmdrivers" -path "*/router/arm-glibc/stage" -type d 2>/dev/null | head -1)
+          if [ -n "$STAGEDIR" ]; then
+            mkdir -p "$STAGEDIR/usr/lib" 2>/dev/null || true
+            touch "$STAGEDIR/usr/lib/libcurl.la" 2>/dev/null || true
+            echo "  created stub libcurl.la at $STAGEDIR/usr/lib/libcurl.la"
+          fi
           # Rebuild through the top-level Makefile (correctly sets SRCBASE/LINUXDIR).
           # No -k: the old silent "not remade because of errors" only happens with -k.
           make -C "$SRCDIR" -j1 \
