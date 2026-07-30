@@ -1201,7 +1201,7 @@ jobs:
             ; do
             src="release/src/router/${pair%%:*}"
             dest="release/src/router/${pair##*:}"
-            [ -f "$src" ] && cp -f "$src" "$dest" 2>/dev/null && echo "  $(basename $dest) staged"
+            [ -f "$src" ] && cp -f "$src" "$dest" 2>/dev/null && echo "  $(basename $dest) staged" || true
           done
 
       - name: Compile (two-phase)
