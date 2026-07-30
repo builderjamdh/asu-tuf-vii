@@ -792,7 +792,7 @@ jobs:
           # 在所有包构建完成后串行重编译，手动安装绕过 install 步骤问题。
           echo "=== Serial rebuild: httpd ==="
           set +e
-          make -C "$SRCDIR/router" -j1 -k \
+          make -C "$SRCDIR" -j1 -k \
             httpd CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
           HTTPD_BIN="$SRCDIR/router/httpd/httpd"
           FSI="$SRCDIR/targets/96764GW/fs.install"
@@ -800,7 +800,7 @@ jobs:
             install -D "$HTTPD_BIN" "$FSI/httpd/usr/sbin/httpd" && echo "  httpd installed"
           fi
           echo "=== Serial rebuild: dropbear ==="
-          make -C "$SRCDIR/router" -j1 -k \
+          make -C "$SRCDIR" -j1 -k \
             dropbear CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
           DB_BIN="$SRCDIR/router/dropbear/dropbearmulti"
           if [ -f "$DB_BIN" ]; then
