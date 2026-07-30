@@ -242,10 +242,12 @@ else
 EXTENDNO1=$(shell git $(ASUSWRT_SRC_GIT) log --pretty=oneline asuswrt_$(KERNEL_VER).$(FS_VER).$(SERIALNO)..HEAD | wc -l)
 endif
 
-ifeq ($(BRANCH),)
 include ./router/extendno.conf
-# BRANCH is empty (CI or external build). Use fixed EXTENDNO from extendno.conf
-# and append current repo's git hash + SDK/EXSTRING for traceability.
+# Always use fixed EXTENDNO from extendno.conf (currently 39099).
+# This ensures both CI and local builds produce the same extendno,
+# avoiding git commit-count-based values like 30001.
+# The git hash + SDK suffix is still appended for traceability.
+ifeq ($(BRANCH),)
 EXSTRING:=$(LBSTRING)
 ifneq ($(FW_JUMP),)
 export EXTENDNO := $(FW_JUMP)-g$(shell git $(ASUSWRT_SRC_GIT) log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")$(SDKEXTEND)$(EXSTRING)
@@ -261,7 +263,7 @@ endif
 ifneq ($(FW_JUMP),)
 export EXTENDNO := $(FW_JUMP)-g$(shell git $(ASUSWRT_SRC_GIT) log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")$(SDKEXTEND)$(EXSTRING)
 else
-export EXTENDNO := $(shell expr $(EXTENDNO1) + $(RC_EXT_NO))-g$(shell git $(ASUSWRT_SRC_GIT) log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")$(SDKEXTEND)$(EXSTRING)
+export EXTENDNO := $(EXTENDNO)-g$(shell git $(ASUSWRT_SRC_GIT) log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")$(SDKEXTEND)$(EXSTRING)
 endif
 endif
 
