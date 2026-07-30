@@ -1241,6 +1241,13 @@ jobs:
           #endif
           VEREOF
           echo "version.h pre-generated"
+
+          # openssl/curl 的 Makefile 不支持 -j 并行编译（.d.tmp 竞态条件），
+          # 必须串行编译以保证 headers 和 libs 在位，否则 web.c/asus_ddns.c 编译失败。
+          echo "=== Pre-build (serial): openssl curl ==="
+          make -C "$SRCDIR" -j1 openssl CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
+          make -C "$SRCDIR" -j1 curl CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
+
           echo "=== Pass 1/2: configure + deps (-j32) ==="
           FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j32 -k -s \
             CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log"
