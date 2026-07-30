@@ -1165,58 +1165,13 @@ jobs:
             echo "  Created config.h for netatalk"
           fi
 
-          # Broadcom Makefile 缺少 config 生成 → 编译之间的依赖声明。
-          # httpd 串行重编译需要这些预编译库已在位
-          # strongswan: autotools configure fails during cross-compile
-          # ("C compiler cannot create executables"). Bypass by placing
-          # dummy configure (prevents autoreconf) and Makefile (prevents
-          # the configure rule from running). Makefile is all: no-op.
-          echo "=== Bypassing strongswan configure ==="
-          STRSWAN_DIR="release/src/router/strongswan"
-          if [ -d "$STRSWAN_DIR" ]; then
-            touch -t 200001010000 "$STRSWAN_DIR/configure" 2>/dev/null
-            printf 'all:\nclean:\ninstall:\ndistclean:\n' > "$STRSWAN_DIR/Makefile"
-            touch "$STRSWAN_DIR/Makefile" 2>/dev/null
-            echo "  strongswan configure bypassed (dummy Makefile)"
-          fi
-
-          # curl: same issue as strongswan (autoreconf + configure both fail
-          # in cross-compile). Bypass with dummy files.
-          echo "=== Bypassing curl configure ==="
-          CURL_DIR="release/src/router/curl"
-          if [ -d "$CURL_DIR" ]; then
-            touch -t 200001010000 "$CURL_DIR/configure" 2>/dev/null
-            printf 'all:\nclean:\ninstall:\ndistclean:\n' > "$CURL_DIR/Makefile"
-            touch "$CURL_DIR/Makefile" 2>/dev/null
-            echo "  curl configure bypassed (dummy Makefile)"
-          fi
-
-          echo "=== Pre-copy serial rebuild deps ==="
-          for pair in \
-            "cfg_mnt/prebuild/libcfgmnt.so:cfg_mnt/libcfgmnt.so" \
-            "dnsqd/prebuild/libdns_app_client.so:dnsqd/libdns_app_client.so" \
-            "nt_center/lib/prebuild/libnt.so:nt_center/lib/libnt.so" \
-            "libwebapi/prebuild/libwebapi.so:libwebapi/libwebapi.so" \
-            "libwebapi/prebuild/libcodb.so:libcodb/libcodb.so" \
-            ; do
-            src="release/src/router/${pair%%:*}"
-            dest="release/src/router/${pair##*:}"
-            [ -f "$src" ] && cp -f "$src" "$dest" 2>/dev/null && echo "  $(basename $dest) staged" || true
-          done
-
-      - name: Compile (two-phase)
+      - name: Compile
         run: |
-          CONFIGURE_OVERRIDE="./configure --disable-option-checking LD=$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-ld --host=arm-buildroot-linux-gnueabi"
           export PATH="$TC_PATH/usr/bin:$PATH"
-          # CONFIG_SITE 让 cross-compile configure 跳过会导致"cannot create executables"的本地测试
           export CONFIG_SITE=/tmp/config.site
-          # 两阶段：先跑 configure 生成配置文件，再全核编译。
-          # -k 容忍 configure 阶段的竞态失败（阶段2会补齐）。
-          # 必须先于 Phase 1 生成 version.h。
-          # setprofile 失败会阻断 bin -> all -> rt_ver 链路，
-          # 导致 defaults.c/version.c 等关键文件因缺 version.h 编译失败。
-          # 不能用 make rt_ver（它会触发完整 Makefile 解析破坏 chip_profile），
-          # 而是直接照 Makefile rt_ver 目标的逻辑手写 header。
+
+          # version.h — Makefile 的 rt_ver 目标依赖 setprofile 成功才能跑到，
+          # 这里直接手写，避免因 setprofile 失败导致 version.h 缺失。
           . "$SRCDIR/version.conf"
           . "$SRCDIR/router/extendno.conf"
           BUILD_USER="$(whoami)"
@@ -1242,131 +1197,70 @@ jobs:
           VEREOF
           echo "version.h pre-generated"
 
-          # openssl/curl 的 Makefile 不支持 -j 并行编译（.d.tmp 竞态条件），
-          # 必须串行编译以保证 headers 和 libs 在位，否则 web.c/asus_ddns.c 编译失败。
-          echo "=== Pre-build (serial): openssl curl ==="
-          make -C "$SRCDIR" -j1 openssl CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
-          make -C "$SRCDIR" -j1 curl CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
+          CONFIGURE_OVERRIDE="./configure --disable-option-checking LD=$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-ld --host=arm-buildroot-linux-gnueabi"
+          echo "=== make TUF-BE3600_V2 -j$(nproc) ==="
+          make -C "$SRCDIR" "$MODEL" -j$(nproc) \
+            CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee "$SRCDIR/build.log"
 
-          echo "=== Pass 1/2: configure + deps (-j32) ==="
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j32 -k -s \
-            CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log"
-           # autoreconf → configure 的内部链会留下空值 config.status，
-          # 但 config.site 缓存了编译器检测结果，重复 configure 不会再报错。
-          # 成功编译的包需要 config.status 来维护 Makefile 时效性，
-          # 删除会导致 Phase 2 出现 "config.status: No such file" Error 127。
+      - name: Build Error Report
+        if: always()
+        run: |
+          LOG="$SRCDIR/build.log"
+          echo "===== BUILD ERROR REPORT ====="
 
-          echo "=== Pass 2/2: parallel compile (-j32) ==="
-          set +e
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j32 -k -s \
-            CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log"
-          RESULT=${PIPESTATUS[1]}
-          set -e
+          echo ""
+          echo "--- Fatal errors (fatal error:) ---"
+          grep -c "fatal error:" "$LOG" 2>/dev/null && grep "fatal error:" "$LOG" | sort -u || echo "  none"
 
-          # Phase 2 串行重编译所有链接失败的组件。
-          # httpd 需要 libwebapi.so 与 libcodb.so 已在位（链接 -lwebapi -lcodb）。
-          # 先构建这两个共享库，再链接 httpd，最后覆盖安装。
-          echo "=== Serial rebuild: libwebapi libcodb httpd ==="
+          echo ""
+          echo "--- Linker errors (undefined reference / cannot find -l) ---"
+          grep -cE "undefined reference|cannot find -l" "$LOG" 2>/dev/null && grep -E "undefined reference|cannot find -l" "$LOG" | sort -u | head -20 || echo "  none"
 
-          # Convert SRCDIR (release/src-rt-.../bcmdrivers/.../router) to
-          # the symlink-backed canonical path that make actually uses
-          ROUTER_DIR="release/src/router"
+          echo ""
+          echo "--- setprofile cp failures ---"
+          grep -c "cannot stat.*prebuilt" "$LOG" 2>/dev/null || echo "  0"
 
-          # --- libwebapi (stripped down standalone build) ---
-          if [ -d "$ROUTER_DIR/libwebapi" ] && [ -f "$ROUTER_DIR/libwebapi/Makefile" ]; then
-            echo "  Building libwebapi..."
-            make -C "$ROUTER_DIR/libwebapi" \
-              CC="$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-gcc" \
-              AR="$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-ar" \
-              CFLAGS="-Os -Wall -fPIC -I$ROUTER_DIR/libwebapi -I$ROUTER_DIR/shared -I$ROUTER_DIR/json-c -I$SRCBASE/include" \
-              LDFLAGS="-L$ROUTER_DIR/shared -lshared -L$ROUTER_DIR/json-c/.libs -ljson-c" \
-              -j1 2>&1 | tee -a "$SRCDIR/build.log" || true
-            if [ -f "$ROUTER_DIR/libwebapi/libwebapi.so" ]; then
-              echo "  libwebapi.so built OK"
-            fi
-          fi
+          echo ""
+          echo "--- Target failures (*** Error) ---"
+          grep -E "\*\*\*.*Error [1-9]" "$LOG" 2>/dev/null | sed 's/.*\*\*\* //' | sort | uniq -c | sort -rn | head -20 || echo "  none"
 
-          # --- libcodb (standalone build) ---
-          if [ -d "$ROUTER_DIR/libcodb" ] && [ -f "$ROUTER_DIR/libcodb/Makefile" ]; then
-            echo "  Building libcodb..."
-            make -C "$ROUTER_DIR/libcodb" \
-              CC="$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-gcc" \
-              AR="$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-ar" \
-              RANLIB="$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-ranlib" \
-              CFLAGS="-g -fPIC -I$ROUTER_DIR/libcodb -I$ROUTER_DIR/sqlite -I$ROUTER_DIR/json-c -I$ROUTER_DIR/shared" \
-              LDFLAGS="-L$ROUTER_DIR/sqlite/.libs -lsqlite3 -L$ROUTER_DIR/json-c/.libs -ljson-c -L$ROUTER_DIR/shared -lshared" \
-              -j1 2>&1 | tee -a "$SRCDIR/build.log" || true
-            if [ -f "$ROUTER_DIR/libcodb/libcodb.so" ]; then
-              echo "  libcodb.so built OK"
-            fi
-          fi
-
-          echo "=== Serial rebuild: httpd ==="
-          set +e
-          # Delete stale httpd binary so make is forced to re-link
-          rm -f "$ROUTER_DIR/httpd/httpd" 2>/dev/null || true
-          # curl target's recipe runs "sed -i $(STAGEDIR)/usr/lib/libcurl.la".
-          # If curl's libtool archive doesn't exist the sed fails and the
-          # curl target error cascades through nt_center → wb → curl, making
-          # httpd unreachable.  Create a dummy stub so the sed is a no-op.
-          STAGEDIR=$(find "$SRCDIR/bcmdrivers" -path "*/router/arm-glibc/stage" -type d 2>/dev/null | head -1)
-          if [ -n "$STAGEDIR" ]; then
-            mkdir -p "$STAGEDIR/usr/lib" 2>/dev/null || true
-            touch "$STAGEDIR/usr/lib/libcurl.la" 2>/dev/null || true
-            echo "  created stub libcurl.la at $STAGEDIR/usr/lib/libcurl.la"
-          fi
-          # Rebuild through the top-level Makefile (correctly sets SRCBASE/LINUXDIR).
-          # No -k: the old silent "not remade because of errors" only happens with -k.
-          make -C "$SRCDIR" -j1 \
-            httpd CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log"
-          HTTPD_EXIT=${PIPESTATUS[0]}
-          if [ ! -f "$ROUTER_DIR/httpd/httpd" ] && [ $HTTPD_EXIT -ne 0 ]; then
-            # Retry: touch sources to force recompile, then rebuild
-            echo "  httpd attempt 1 failed (exit $HTTPD_EXIT), retrying with touched sources..."
-            touch "$ROUTER_DIR/httpd"/*.c 2>/dev/null || true
-            make -C "$SRCDIR" -j1 \
-              httpd CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log"
-          fi
+          echo ""
+          echo "--- Critical binary status in fs.install ---"
           FSI="$SRCDIR/targets/96764GW/fs.install"
-          if [ -f "$ROUTER_DIR/httpd/httpd" ]; then
-            install -D "$ROUTER_DIR/httpd/httpd" "$FSI/httpd/usr/sbin/httpd" && echo "  httpd installed"
-          elif [ -f "$SRCDIR/router/httpd/httpd" ]; then
-            install -D "$SRCDIR/router/httpd/httpd" "$FSI/httpd/usr/sbin/httpd" && echo "  httpd installed (from SRCDIR)"
+          for bin in rc httpd hostapd dropbearmulti miniupnpd; do
+            found=$(find "$FSI" -name "$bin" -type f 2>/dev/null | head -1)
+            if [ -n "$found" ]; then
+              size=$(stat -c%s "$found" 2>/dev/null)
+              echo "  OK  $bin ($size bytes)"
+            else
+              echo "  !! MISSING: $bin"
+            fi
+          done
+
+          echo ""
+          echo "--- Key kernel modules in fs.install ---"
+          for mod in wl.ko bcm_enet.ko pktflow.ko archer.ko dhd.ko; do
+            found=$(find "$FSI" -name "$mod" -type f 2>/dev/null | head -1)
+            if [ -n "$found" ]; then
+              size=$(stat -c%s "$found" 2>/dev/null)
+              echo "  OK  $mod ($size bytes)"
+            else
+              echo "  !! MISSING: $mod"
+            fi
+          done
+
+          echo ""
+          echo "--- NVRAM defaults (buildinfo from defaults.c) ---"
+          find "$FSI" -path "*/defaults.c" -exec grep -h "RT_BUILD_INFO\|RT_EXTENDNO\|RT_VERSION" {} \; 2>/dev/null || echo "  (checking compiled binary)"
+          defaults_bin=$(find "$FSI" -name "defaults.o" -type f 2>/dev/null | head -1)
+          if [ -n "$defaults_bin" ]; then
+            strings "$defaults_bin" | grep -E "^3\.0\.|39099|Koolshare|TUF" | head -5
           else
-            echo "  httpd binary not found (exit $HTTPD_EXIT)"
-          fi
-          echo "=== Serial rebuild: dropbear ==="
-          make -C "$SRCDIR" -j1 -k \
-            dropbear CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
-          DB_BIN="$SRCDIR/router/dropbear/dropbearmulti"
-          if [ -f "$DB_BIN" ]; then
-            install -D "$DB_BIN" "$FSI/dropbear/usr/bin/dropbearmulti" && echo "  dropbear installed"
+            echo "  defaults.o NOT FOUND — NVRAM defaults may be empty!"
           fi
 
-          echo "=== Serial rebuild: miniupnpd ==="
-          MINIUPNPD_DIR="release/src/router/miniupnpd"
-          if [ -d "$MINIUPNPD_DIR" ] && [ -f "$MINIUPNPD_DIR/config.h" ]; then
-            sed -i 's/#undef IPTABLES_143/#define IPTABLES_143/' "$MINIUPNPD_DIR/config.h" 2>/dev/null
-            rm -f "$MINIUPNPD_DIR"/*.o "$MINIUPNPD_DIR"/netfilter/*.o 2>/dev/null || true
-            rm -f "$MINIUPNPD_DIR"/.deps/*.Plo "$MINIUPNPD_DIR"/netfilter/.deps/*.Plo 2>/dev/null || true
-          fi
-          # Rebuild via the router Makefile which sets all needed make variables
-          # (IPTABLESPATH, EXTRACFLAGS, LDFLAGS, LDLIBS, etc)
-          make -C "$SRCDIR" -j1 -k \
-            miniupnpd CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
-          if [ -f "$SRCDIR/router/miniupnpd/miniupnpd" ]; then
-            install -D "$SRCDIR/router/miniupnpd/miniupnpd" "$FSI/miniupnpd/usr/sbin/miniupnpd" && echo "  miniupnpd installed"
-          fi
-          set -e
-
-          if [ "$RESULT" -ne 0 ]; then
-            echo "=== Build failed (exit $RESULT), tail of errors: ==="
-            grep -nE "error:|Error [0-9]+|fatal:" "$SRCDIR/build.log" | tail -n 60
-          else
-            echo "Build succeeded (exit 0)"
-          fi
-          echo "=== ccache stats ==="
-          ccache -s
+          echo ""
+          echo "===== END ERROR REPORT ====="
 
       - name: Validate Firmware
         if: always()
