@@ -1212,11 +1212,8 @@ jobs:
           export CONFIG_SITE=/tmp/config.site
 
           # openssl/curl 的 Configure 在交叉编译下失败，-I 不被加入。
-          # 且 web.c 用 #include <openssl/x509.h> 不能走 shared/ 间接路径。
-          # 添加 -idirafter 到 CFLAGS，让编译器搜索这些头文件目录。
-          export CFLAGS="-idirafter $GITHUB_WORKSPACE/release/src/router/openssl-1.1/include -idirafter $GITHUB_WORKSPACE/release/src/router/curl/include $CFLAGS"
-          export CXXFLAGS="-idirafter $GITHUB_WORKSPACE/release/src/router/openssl-1.1/include -idirafter $GITHUB_WORKSPACE/release/src/router/curl/include $CXXFLAGS"
-          echo "openssl/curl include paths added"
+          # 使用 EXTRACFLAGS（Makefile 会追加而非覆盖）。
+          export EXTRACFLAGS="-idirafter $GITHUB_WORKSPACE/release/src/router/openssl-1.1/include -idirafter $GITHUB_WORKSPACE/release/src/router/curl/include $EXTRACFLAGS"
 
           . "$SRCDIR/version.conf"
           . "$SRCDIR/router/extendno.conf"

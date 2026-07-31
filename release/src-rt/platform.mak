@@ -19,7 +19,7 @@ ifeq ($(ARM),y)
 
 ifeq ($(HND_ROUTER),y)
 export PRIVATE_EXTRACFLAGS := $(BRCM_COMMON_CFLAGS) -DHND_ROUTER -DLINUX26 -DLINUX_2_6_36 -DCONFIG_BCMWL5
-export EXTRACFLAGS := -march=armv7-a -marm -DHND_ROUTER -DCONFIG_BCMWL5 -D__ARM_ARCH_7A__
+export EXTRACFLAGS := -march=armv7-a -marm -DHND_ROUTER -DCONFIG_BCMWL5 -D__ARM_ARCH_7A__ -I$(SRCBASE)/router/openssl-1.1/include -I$(SRCBASE)/router/curl/include
 else
  ifeq ($(EXTRACFLAGS),)
 export EXTRACFLAGS := -DBCMWPA2 -DBCMARM -fno-delete-null-pointer-checks -marm 
