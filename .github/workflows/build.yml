@@ -1379,11 +1379,7 @@ jobs:
           elif [ -f "$SRCDIR/router/rc/rc" ]; then
             install -D "$SRCDIR/router/rc/rc" "$FSI/rc/usr/sbin/rc" && echo "  rc installed (via SRCDIR)"
           fi
-          echo "=== Inject prebuilt files ==="
-          if [ -d prebuilt/lib/modules/4.19.294 ]; then
-            cp -a prebuilt/lib/modules/4.19.294/* "$FSI/lib/modules/4.19.294/" 2>/dev/null || true
-            echo "  modules injected ($(ls prebuilt/lib/modules/4.19.294/extra/*.ko 2>/dev/null | wc -l) ko)"
-          fi
+          echo "=== Inject prebuilt userspace ==="
           if [ -f prebuilt/sbin/rc ]; then
             install -D prebuilt/sbin/rc "$FSI/sbin/rc"
             install -D prebuilt/usr/sbin/httpd "$FSI/usr/sbin/httpd"
