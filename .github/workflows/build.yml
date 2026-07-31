@@ -1199,14 +1199,14 @@ jobs:
 
           CONFIGURE_OVERRIDE="./configure --disable-option-checking LD=$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-ld --host=arm-buildroot-linux-gnueabi"
 
-          # Phase 1: 生成所有配置文件（rtconfig.h, .config 等），容忍 setprofile 的 cp 错误
+          # Phase 1: 生成配置文件（rtconfig.h, .config 等）。yes "" 自动应答所有交互式提示。
           echo "=== Pass 1/2: configure + deps (-j$(nproc) -k) ==="
-          make -C "$SRCDIR" "$MODEL" -j$(nproc) -k \
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j$(nproc) -k \
             CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee "$SRCDIR/build.log"
 
-          # Phase 2: 并行编译，此时 rtconfig.h 等已由 Phase 1 生成
+          # Phase 2: 并行编译。Phase 1 已生成 rtconfig.h 等配置。
           echo "=== Pass 2/2: parallel compile (-j$(nproc) -k) ==="
-          make -C "$SRCDIR" "$MODEL" -j$(nproc) -k \
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j$(nproc) -k \
             CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log"
 
       - name: Build Error Report
