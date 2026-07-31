@@ -1424,7 +1424,7 @@ jobs:
           done
           echo "===== END ERROR REPORT ====="
 
-      - name: Inject Prebuilt Modules
+      - name: Inject Prebuilt
         if: always()
         run: |
           FSI="$SRCDIR/targets/96764GW/fs.install"
@@ -1433,6 +1433,12 @@ jobs:
             cp -a "$PREBUILT"/* "$FSI/lib/modules/4.19.294/" 2>/dev/null || true
             echo "Prebuilt modules injected"
             ls "$FSI/lib/modules/4.19.294/extra/"*.ko 2>/dev/null | wc -l
+          fi
+          if [ -f prebuilt/sbin/rc ]; then
+            install -D prebuilt/sbin/rc "$FSI/sbin/rc"
+            install -D prebuilt/usr/sbin/httpd "$FSI/usr/sbin/httpd"
+            install -D prebuilt/usr/sbin/hostapd "$FSI/usr/sbin/hostapd"
+            echo "Prebuilt rc/httpd/hostapd injected"
           fi
 
       - name: Validate Firmware
