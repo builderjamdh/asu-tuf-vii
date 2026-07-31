@@ -7025,8 +7025,8 @@ ifeq ($(CONFIG_RALINK),y)
 	fi
 endif
 
-	@$(MAKE) setprofile
-	$(MAKE) all
+	-@$(MAKE) setprofile
+	$(MAKE) -k all
 
 ifeq ($(REALTEK),y)
 define RtlFlashMpping
