@@ -1198,8 +1198,8 @@ jobs:
           echo "version.h pre-generated"
 
           CONFIGURE_OVERRIDE="./configure --disable-option-checking LD=$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-ld --host=arm-buildroot-linux-gnueabi"
-          echo "=== make TUF-BE3600_V2 -j$(nproc) ==="
-          make -C "$SRCDIR" "$MODEL" -j$(nproc) \
+          echo "=== make TUF-BE3600_V2 -j$(nproc) -k ==="
+          make -C "$SRCDIR" "$MODEL" -j$(nproc) -k \
             CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee "$SRCDIR/build.log"
 
       - name: Build Error Report
