@@ -3769,7 +3769,7 @@ openssl-1.1/Makefile:
 	@touch $@
 
 openssl-1.1: openssl-1.1/Makefile
-	$(MAKE) -j 8 -C openssl-1.1 && $(MAKE) $@-stage
+	$(MAKE) -j 1 -C openssl-1.1 && $(MAKE) $@-stage
 
 openssl-1.1-clean:
 	[ ! -f openssl-1.1/Makefile ] || $(MAKE) -C openssl-1.1 clean
@@ -6102,7 +6102,7 @@ lldpd-1.0.11-clean:
 	@rm -f lldpd-1.0.11/libevent/Makefile
 
 libevent-2.0.21: libevent-2.0.21/Makefile
-	$(MAKE) -j 8 -C $@ && $(MAKE) $@-stage && sed 's|/usr/lib|$(STAGEDIR)/usr/lib|g' -i $(STAGEDIR)/usr/lib/libevent.la
+	$(MAKE) -j 1 -C $@ && $(MAKE) $@-stage && sed 's|/usr/lib|$(STAGEDIR)/usr/lib|g' -i $(STAGEDIR)/usr/lib/libevent.la
 
 libevent-2.0.21/Makefile:
 	( cd libevent-2.0.21 && autoreconf -i -f ; \
@@ -7520,7 +7520,7 @@ openvpn/dh2048.pem:
 	openssl dhparam -dsaparam -out $@ 2048
 
 openvpn: shared $(if $(BCM_502L07P2),ethctl_lib) openssl lzo$(LZO_VER) openpam zlib openvpn/dh2048.pem openvpn/Makefile
-	$(MAKE) -j 8 -C $@
+	$(MAKE) -j 1 -C $@
 
 openvpn/Makefile:
 	( cd openvpn ; ./autogen.sh ; \
@@ -8094,7 +8094,7 @@ curl: $(if $(RTCONFIG_OPENSSL11)$(RTCONFIG_OPENSSL10),openssl,) $(if $(RTCONFIG_
 	@$(SEP)
 # temporary curl-7.21.7 path compatibility
 	[ "$(notdir $(realpath $curl-7.21.7))" = "$@" ] || (rm -f curl-7.21.7 && ln -s $@ curl-7.21.7)
-	$(MAKE) -j 8 -C $@ && $(MAKE) $@-stage && sed 's|/usr/lib|$(STAGEDIR)/usr/lib|g' -i $(STAGEDIR)/usr/lib/libcurl.la
+	$(MAKE) -j 1 -C $@ && $(MAKE) $@-stage && sed 's|/usr/lib|$(STAGEDIR)/usr/lib|g' -i $(STAGEDIR)/usr/lib/libcurl.la
 
 curl-install:
 	@$(SEP)
