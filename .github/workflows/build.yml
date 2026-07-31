@@ -1402,12 +1402,36 @@ jobs:
           # fs.install rsync 出 fs/（包含刚注入的 rc/httpd/hostapd/libs），
           # 再重新生成 squashfs 和 pkgtb。
           echo "=== Rebuild final image (picks up injected userspace) ==="
+          # 清掉 Pass 1/2 打包的旧 pkgtb，防止 artifacts 里新旧两份混淆
+          rm -f "$SRCDIR/targets/96764GW"/*.pkgtb 2>/dev/null || true
           set +e
           make -C "$SRCDIR" -j1 buildimage 2>&1 | tee -a "$SRCDIR/build.log"
           IMAGE_EXIT=${PIPESTATUS[0]}
           set -e
           echo "  buildimage exit: $IMAGE_EXIT"
           set -e
+
+          # 注入官方 kernel：bootfs 内 kernel 载荷替换为官方 39407 固件的
+          # vmlinux.bin.lzo，重算全部 hash-1 并用 demo key 重签，重打包 pkgtb。
+          # 我们编译的 kernel 与官方差异过大（62%），疑似导致设备启动失败；
+          # 官方 kernel 保证与官方一致，同时保留我们构建的 uboot/atf/rootfs。
+          if [ "$RESULT" -eq 0 ] && [ "$IMAGE_EXIT" -eq 0 ]; then
+            echo "=== Inject official kernel into pkgtb ==="
+            python3 -m pip install --quiet --user cryptography \
+              || python3 -m pip install --quiet --break-system-packages cryptography
+            PKG=$(find "$SRCDIR" -maxdepth 5 -name '*_nand_squashfs.pkgtb' \
+                  ! -name '*_loader*' 2>/dev/null | head -1)
+            echo "  target: $PKG"
+            if [ -z "$PKG" ]; then
+              echo "!! no _nand_squashfs.pkgtb found, injection skipped"
+            else
+              python3 "$GITHUB_WORKSPACE/.github/official-kernel/patch_pkgtb.py" \
+                --pkgtb "$PKG" --out "$PKG" \
+                --kernel "$GITHUB_WORKSPACE/.github/official-kernel/vmlinux.bin.lzo" \
+                --key "$SRCDIR/targets/keys/demo/GEN3/Krot-fld.pem" --verify
+              echo "  official kernel injected + verified"
+            fi
+          fi
 
           if [ "$RESULT" -ne 0 ]; then
             echo "=== Build failed (exit $RESULT), tail of errors: ==="
