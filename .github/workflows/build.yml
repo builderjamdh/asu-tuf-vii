@@ -1386,6 +1386,27 @@ jobs:
             install -D prebuilt/usr/sbin/hostapd "$FSI/usr/sbin/hostapd"
             echo "  rc/httpd/hostapd injected"
           fi
+          # rc/httpd/hostapd 是 Koolshare 预编译二进制，必须配套注入
+          # Koolshare 版的共享库（ldd /sbin/rc 列出的依赖），否则动态链接
+          # 符号不匹配，rc（init 进程）起不来，固件必然回滚。
+          if [ -d prebuilt/lib ]; then
+            mkdir -p "$FSI/lib" "$FSI/usr/lib"
+            cp -f prebuilt/lib/* "$FSI/lib/" 2>/dev/null || true
+            cp -f prebuilt/usr/lib/* "$FSI/usr/lib/" 2>/dev/null || true
+            echo "  prebuilt shared libs injected"
+          fi
+
+          # 关键：make $MODEL（Pass 1/2）执行到 $(MAKE) buildimage 时已经
+          # 把 rootfs.img / pkgtb 打包完了，上面的注入发生在打包之后，
+          # 不会进固件。这里显式重跑 buildimage，让 buildFS 重新从
+          # fs.install rsync 出 fs/（包含刚注入的 rc/httpd/hostapd/libs），
+          # 再重新生成 squashfs 和 pkgtb。
+          echo "=== Rebuild final image (picks up injected userspace) ==="
+          set +e
+          make -C "$SRCDIR" -j1 buildimage 2>&1 | tee -a "$SRCDIR/build.log"
+          IMAGE_EXIT=${PIPESTATUS[0]}
+          set -e
+          echo "  buildimage exit: $IMAGE_EXIT"
           set -e
 
           if [ "$RESULT" -ne 0 ]; then
@@ -1409,10 +1430,10 @@ jobs:
           echo "--- setprofile cp failures ---"
           grep -c "cannot stat.*prebuilt" "$LOG" 2>/dev/null || echo "  0"
           echo ""
-          echo "--- Critical binary status ---"
-          FSI="$SRCDIR/targets/96764GW/fs.install"
+          echo "--- Critical binary status (in final fs/) ---"
+          FS="$SRCDIR/targets/96764GW/fs"
           for bin in rc httpd hostapd dropbearmulti miniupnpd; do
-            found=$(find "$FSI" -name "$bin" -type f 2>/dev/null | head -1)
+            found=$(find "$FS" -name "$bin" -type f 2>/dev/null | head -1)
             if [ -n "$found" ]; then
               echo "  OK  $bin ($(stat -c%s "$found") bytes)"
             else
@@ -1420,15 +1441,28 @@ jobs:
             fi
           done
           echo ""
-          echo "--- Key kernel modules ---"
+          echo "--- Key kernel modules (in final fs/) ---"
           for mod in wl.ko bcm_enet.ko pktflow.ko archer.ko dhd.ko; do
-            found=$(find "$FSI" -name "$mod" -type f 2>/dev/null | head -1)
+            found=$(find "$FS" -name "$mod" -type f 2>/dev/null | head -1)
             if [ -n "$found" ]; then
               echo "  OK  $mod ($(stat -c%s "$found") bytes)"
             else
               echo "  !! MISSING: $mod"
             fi
           done
+          echo ""
+          echo "--- Injected shared libs (in final fs/) ---"
+          for lib in libshared.so libnvram.so libbcm.so libcurl.so.4 libcrypto.so.1.1; do
+            found=$(find "$FS" -name "$lib" -type f 2>/dev/null | head -1)
+            if [ -n "$found" ]; then
+              echo "  OK  $lib ($(stat -c%s "$found") bytes)"
+            else
+              echo "  !! MISSING: $lib"
+            fi
+          done
+          echo ""
+          echo "--- Firmware images (mtime) ---"
+          find "$SRCDIR" -maxdepth 5 -name '*.pkgtb' -printf '%TY-%Tm-%Td %TH:%TM  %s  %p\n' 2>/dev/null | sort
           echo "===== END ERROR REPORT ====="
 
       - name: Validate Firmware
