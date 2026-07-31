@@ -1211,6 +1211,16 @@ jobs:
           # CONFIG_SITE 让 cross-compile configure 跳过会导致"cannot create executables"的本地测试
           export CONFIG_SITE=/tmp/config.site
 
+          # openssl/curl 的 configure 在交叉编译下失败，但头文件已在源码目录中。
+          # 直接安装到 staging 目录，避免 web.c/asus_ddns.c 编译失败。
+          STAGEDIR=$(find "$SRCDIR/bcmdrivers" -path "*/router/arm-glibc/stage" -type d 2>/dev/null | head -1)
+          if [ -n "$STAGEDIR" ]; then
+            mkdir -p "$STAGEDIR/usr/include"
+            cp -a release/src/router/openssl-1.1/include/openssl "$STAGEDIR/usr/include/" 2>/dev/null || true
+            cp -a release/src/router/curl/include/curl "$STAGEDIR/usr/include/" 2>/dev/null || true
+            echo "openssl/curl headers staged"
+          fi
+
           . "$SRCDIR/version.conf"
           . "$SRCDIR/router/extendno.conf"
           cat > "$SRCDIR/router/shared/version.h" << VEREOF
