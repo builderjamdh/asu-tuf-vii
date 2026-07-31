@@ -1211,9 +1211,29 @@ jobs:
           # CONFIG_SITE 让 cross-compile configure 跳过会导致"cannot create executables"的本地测试
           export CONFIG_SITE=/tmp/config.site
 
-          # openssl/curl 的 Configure 在交叉编译下失败，-I 不被加入。
-          # 使用 EXTRACFLAGS（Makefile 会追加而非覆盖）。
-          export EXTRACFLAGS="-idirafter $GITHUB_WORKSPACE/release/src/router/openssl-1.1/include -idirafter $GITHUB_WORKSPACE/release/src/router/curl/include $EXTRACFLAGS"
+          # opensslconf.h 由 Configure 生成，交叉编译下失败。手动创建。
+          cat > release/src/router/openssl-1.1/include/openssl/opensslconf.h << 'OSSLHDR'
+          #include <openssl/opensslv.h>
+          #ifdef OPENSSL_ALGORITHM_DEFINES
+          # error OPENSSL_ALGORITHM_DEFINES no longer supported
+          #endif
+          #define OPENSSL_CPUID_OBJ
+          #define OPENSSL_BN_ASM_MONT
+          #define OPENSSL_BN_ASM_GF2m
+          #define SHA1_ASM
+          #define SHA256_ASM
+          #define SHA512_ASM
+          #define KECCAK1600_ASM
+          #define AES_ASM
+          #define BSAES_ASM
+          #define GHASH_ASM
+          #define ECP_NISTZ256_ASM
+          #define POLY1305_ASM
+          #define OPENSSLDIR "/etc"
+          #define ENGINESDIR "/usr/lib/engines-1.1"
+          #define OPENSSL_API_COMPAT 0x10000000L
+          OSSLHDR
+          echo "opensslconf.h pre-generated"
 
           . "$SRCDIR/version.conf"
           . "$SRCDIR/router/extendno.conf"
