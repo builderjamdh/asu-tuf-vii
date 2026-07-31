@@ -1210,35 +1210,6 @@ jobs:
           export PATH="$TC_PATH/usr/bin:$PATH"
           # CONFIG_SITE 让 cross-compile configure 跳过会导致"cannot create executables"的本地测试
           export CONFIG_SITE=/tmp/config.site
-
-          # Makefile 的 rt_ver 依赖 setprofile 成功，但 setprofile 因缺 prebuilt 文件失败
-          # 导致 version.h 未生成，defaults.c 编译失败，NVRAM 默认值为空。
-          # 这里直接手写 version.h。
-          . "$SRCDIR/version.conf"
-          . "$SRCDIR/router/extendno.conf"
-          BUILD_USER="$(whoami)"
-          BUILD_INFO="$(hostname)"
-          BUILD_TIME="$(date)"
-          SERIALNO="${SERIALNO:-102}"
-          RCNO="${RCNO:-2}"
-          EXTENDNO="${EXTENDNO:-39099}"
-          cat > "$SRCDIR/router/shared/version.h" << VEREOF
-          #ifndef RTVERSION
-          #define RT_MAJOR_VERSION "${KERNEL_VER}"
-          #define RT_MINOR_VERSION "${FS_VER}"
-          #define RT_VERSION "${KERNEL_VER}.${FS_VER}"
-          #define RT_SERIALNO "${SERIALNO}"
-          #define RT_RCNO "${RCNO}"
-          #define RT_EXTENDNO "${EXTENDNO}"
-          #define RT_SWPJVERNO ""
-          #define RT_BUILD_NAME "${BUILD_USER}"
-          #define RT_BUILD_NAME_SEC "${BUILD_INFO}"
-          #define RT_BUILD_INFO "${BUILD_TIME} ${BUILD_USER}@${BUILD_INFO}"
-          #define RT_CUSTOM_MODEL ""
-          #endif
-          VEREOF
-          echo "version.h pre-generated"
-
           # 两阶段：先跑 configure 生成配置文件，再全核编译。
           # -k 容忍 configure 阶段的竞态失败（阶段2会补齐）。
           echo "=== Pass 1/2: configure + deps (-j32) ==="
@@ -1367,46 +1338,32 @@ jobs:
           LOG="$SRCDIR/build.log"
           echo "===== BUILD ERROR REPORT ====="
           echo ""
-          echo "--- Fatal errors (fatal error:) ---"
+          echo "--- Fatal errors ---"
           grep -c "fatal error:" "$LOG" 2>/dev/null && grep "fatal error:" "$LOG" | sort -u || echo "  none"
           echo ""
           echo "--- setprofile cp failures ---"
           grep -c "cannot stat.*prebuilt" "$LOG" 2>/dev/null || echo "  0"
           echo ""
-          echo "--- Target failures (*** Error) ---"
-          grep -E "\*\*\*.*Error [1-9]" "$LOG" 2>/dev/null | sed 's/.*\*\*\* //' | sort | uniq -c | sort -rn | head -15 || echo "  none"
-          echo ""
-          echo "--- Critical binary status in fs.install ---"
+          echo "--- Critical binary status ---"
           FSI="$SRCDIR/targets/96764GW/fs.install"
           for bin in rc httpd hostapd dropbearmulti miniupnpd; do
             found=$(find "$FSI" -name "$bin" -type f 2>/dev/null | head -1)
             if [ -n "$found" ]; then
-              size=$(stat -c%s "$found" 2>/dev/null)
-              echo "  OK  $bin ($size bytes)"
+              echo "  OK  $bin ($(stat -c%s "$found") bytes)"
             else
               echo "  !! MISSING: $bin"
             fi
           done
           echo ""
-          echo "--- Key kernel modules in fs.install ---"
+          echo "--- Key kernel modules ---"
           for mod in wl.ko bcm_enet.ko pktflow.ko archer.ko dhd.ko; do
             found=$(find "$FSI" -name "$mod" -type f 2>/dev/null | head -1)
             if [ -n "$found" ]; then
-              size=$(stat -c%s "$found" 2>/dev/null)
-              echo "  OK  $mod ($size bytes)"
+              echo "  OK  $mod ($(stat -c%s "$found") bytes)"
             else
               echo "  !! MISSING: $mod"
             fi
           done
-          echo ""
-          echo "--- NVRAM defaults (buildinfo) ---"
-          defaults_bin=$(find "$FSI" -name "defaults.o" -type f 2>/dev/null | head -1)
-          if [ -n "$defaults_bin" ]; then
-            strings "$defaults_bin" | grep -E "^3\.0\.|39099|TUF" | head -5
-          else
-            echo "  defaults.o NOT FOUND"
-          fi
-          echo ""
           echo "===== END ERROR REPORT ====="
 
       - name: Validate Firmware
