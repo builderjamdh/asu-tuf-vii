@@ -1165,6 +1165,35 @@ jobs:
             echo "  Created config.h for netatalk"
           fi
 
+          echo "=== Bypassing strongswan configure ==="
+          STRSWAN_DIR="release/src/router/strongswan"
+          if [ -d "$STRSWAN_DIR" ]; then
+            touch -t 200001010000 "$STRSWAN_DIR/configure"
+            printf 'all:\nclean:\ninstall:\ndistclean:\n' > "$STRSWAN_DIR/Makefile"
+            touch "$STRSWAN_DIR/Makefile"
+          fi
+
+          echo "=== Bypassing curl configure ==="
+          CURL_DIR="release/src/router/curl"
+          if [ -d "$CURL_DIR" ]; then
+            touch -t 200001010000 "$CURL_DIR/configure"
+            printf 'all:\nclean:\ninstall:\ndistclean:\n' > "$CURL_DIR/Makefile"
+            touch "$CURL_DIR/Makefile"
+          fi
+
+          echo "=== Pre-copy serial rebuild deps ==="
+          for pair in \
+            "cfg_mnt/prebuild/libcfgmnt.so:cfg_mnt/libcfgmnt.so" \
+            "dnsqd/prebuild/libdns_app_client.so:dnsqd/libdns_app_client.so" \
+            "nt_center/lib/prebuild/libnt.so:nt_center/lib/libnt.so" \
+            "libwebapi/prebuild/libwebapi.so:libwebapi/libwebapi.so" \
+            "libwebapi/prebuild/libcodb.so:libcodb/libcodb.so" \
+            ; do
+            src="release/src/router/${pair%%:*}"
+            dest="release/src/router/${pair##*:}"
+            [ -f "$src" ] && cp -f "$src" "$dest" && echo "  $(basename $dest) staged"
+          done
+
       - name: Compile
         run: |
           export PATH="$TC_PATH/usr/bin:$PATH"
@@ -1200,14 +1229,33 @@ jobs:
           CONFIGURE_OVERRIDE="./configure --disable-option-checking LD=$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-ld --host=arm-buildroot-linux-gnueabi"
 
           # Phase 1: 生成配置文件（rtconfig.h, .config 等）。yes "" 自动应答所有交互式提示。
-          echo "=== Pass 1/2: configure + deps (-j$(nproc) -k) ==="
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j$(nproc) -k \
+          echo "=== Pass 1/2: configure + deps (-j32 -k) ==="
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j32 -k \
             CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee "$SRCDIR/build.log"
 
           # Phase 2: 并行编译。Phase 1 已生成 rtconfig.h 等配置。
-          echo "=== Pass 2/2: parallel compile (-j$(nproc) -k) ==="
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j$(nproc) -k \
+          echo "=== Pass 2/2: parallel compile (-j32 -k) ==="
+          set +e
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j32 -k \
             CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log"
+          RESULT=${PIPESTATUS[1]}
+          set -e
+
+          # 串行重编译并安装链接失败的组件
+          echo "=== Serial rebuild: httpd dropbear miniupnpd ==="
+          ROUTER_DIR="release/src/router"
+          FSI="$SRCDIR/targets/96764GW/fs.install"
+          STAGEDIR=$(find "$SRCDIR/bcmdrivers" -path "*/router/arm-glibc/stage" -type d 2>/dev/null | head -1)
+          if [ -n "$STAGEDIR" ]; then
+            mkdir -p "$STAGEDIR/usr/lib"
+            touch "$STAGEDIR/usr/lib/libcurl.la"
+          fi
+          make -C "$SRCDIR" -j1 httpd CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
+          [ -f "$ROUTER_DIR/httpd/httpd" ] && install -D "$ROUTER_DIR/httpd/httpd" "$FSI/httpd/usr/sbin/httpd" || true
+          make -C "$SRCDIR" -j1 dropbear CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
+          [ -f "$SRCDIR/router/dropbear/dropbearmulti" ] && install -D "$SRCDIR/router/dropbear/dropbearmulti" "$FSI/dropbear/usr/bin/dropbearmulti" || true
+          make -C "$SRCDIR" -j1 miniupnpd CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
+          [ -f "$SRCDIR/router/miniupnpd/miniupnpd" ] && install -D "$SRCDIR/router/miniupnpd/miniupnpd" "$FSI/miniupnpd/usr/sbin/miniupnpd" || true
 
       - name: Build Error Report
         if: always()
