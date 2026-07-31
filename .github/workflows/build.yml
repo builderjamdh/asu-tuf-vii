@@ -1374,8 +1374,10 @@ jobs:
           fi
           make -C "$SRCDIR" -j1 -k \
             rc CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
-          if [ -f "$SRCDIR/router/rc/rc" ]; then
-            install -D "$SRCDIR/router/rc/rc" "$FSI/rc/usr/sbin/rc" && echo "  rc installed"
+          if [ -f "$ROUTER_DIR/rc/rc" ]; then
+            install -D "$ROUTER_DIR/rc/rc" "$FSI/rc/usr/sbin/rc" && echo "  rc installed"
+          elif [ -f "$SRCDIR/router/rc/rc" ]; then
+            install -D "$SRCDIR/router/rc/rc" "$FSI/rc/usr/sbin/rc" && echo "  rc installed (via SRCDIR)"
           fi
           set -e
 
