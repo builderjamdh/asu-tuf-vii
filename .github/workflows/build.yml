@@ -1211,13 +1211,12 @@ jobs:
           # CONFIG_SITE 让 cross-compile configure 跳过会导致"cannot create executables"的本地测试
           export CONFIG_SITE=/tmp/config.site
 
-          # openssl/curl 的 configure 在交叉编译下失败，但头文件已在源码目录中。
-          # 直接安装到 staging 目录，避免 web.c/asus_ddns.c 编译失败。
-          HDR_STAGE="$SRCDIR/bcmdrivers/broadcom/net/wl/bcm96764/main/src/router/arm-glibc/stage/usr/include"
-          mkdir -p "$HDR_STAGE/openssl" "$HDR_STAGE/curl"
-          cp -a release/src/router/openssl-1.1/include/openssl/. "$HDR_STAGE/openssl/" 2>/dev/null || true
-          cp -a release/src/router/curl/include/curl/. "$HDR_STAGE/curl/" 2>/dev/null || true
-          echo "openssl/curl headers staged"
+          # openssl/curl 的 Configure 在交叉编译下失败，-I 不被加入。
+          # 且 web.c 用 #include <openssl/x509.h> 不能走 shared/ 间接路径。
+          # 添加 -idirafter 到 CFLAGS，让编译器搜索这些头文件目录。
+          export CFLAGS="-idirafter $GITHUB_WORKSPACE/release/src/router/openssl-1.1/include -idirafter $GITHUB_WORKSPACE/release/src/router/curl/include $CFLAGS"
+          export CXXFLAGS="-idirafter $GITHUB_WORKSPACE/release/src/router/openssl-1.1/include -idirafter $GITHUB_WORKSPACE/release/src/router/curl/include $CXXFLAGS"
+          echo "openssl/curl include paths added"
 
           . "$SRCDIR/version.conf"
           . "$SRCDIR/router/extendno.conf"
