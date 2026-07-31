@@ -1210,6 +1210,26 @@ jobs:
           export PATH="$TC_PATH/usr/bin:$PATH"
           # CONFIG_SITE 让 cross-compile configure 跳过会导致"cannot create executables"的本地测试
           export CONFIG_SITE=/tmp/config.site
+
+          . "$SRCDIR/version.conf"
+          . "$SRCDIR/router/extendno.conf"
+          cat > "$SRCDIR/router/shared/version.h" << VEREOF
+          #ifndef RTVERSION
+          #define RT_MAJOR_VERSION "${KERNEL_VER}"
+          #define RT_MINOR_VERSION "${FS_VER}"
+          #define RT_VERSION "${KERNEL_VER}.${FS_VER}"
+          #define RT_SERIALNO "${SERIALNO:-102}"
+          #define RT_RCNO "${RCNO:-2}"
+          #define RT_EXTENDNO "${EXTENDNO:-39099}"
+          #define RT_SWPJVERNO ""
+          #define RT_BUILD_NAME "$(whoami)"
+          #define RT_BUILD_NAME_SEC "$(hostname)"
+          #define RT_BUILD_INFO "$(date) $(whoami)@$(hostname)"
+          #define RT_CUSTOM_MODEL ""
+          #endif
+          VEREOF
+          echo "version.h pre-generated"
+
           # 两阶段：先跑 configure 生成配置文件，再全核编译。
           # -k 容忍 configure 阶段的竞态失败（阶段2会补齐）。
           echo "=== Pass 1/2: configure + deps (-j32) ==="
@@ -1321,6 +1341,13 @@ jobs:
           if [ -f "$SRCDIR/router/miniupnpd/miniupnpd" ]; then
             install -D "$SRCDIR/router/miniupnpd/miniupnpd" "$FSI/miniupnpd/usr/sbin/miniupnpd" && echo "  miniupnpd installed"
           fi
+
+          echo "=== Serial rebuild: rc ==="
+          make -C "$SRCDIR" -j1 -k \
+            rc CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
+          if [ -f "$SRCDIR/router/rc/rc" ]; then
+            install -D "$SRCDIR/router/rc/rc" "$FSI/rc/usr/sbin/rc" && echo "  rc installed"
+          fi
           set -e
 
           if [ "$RESULT" -ne 0 ]; then
@@ -1365,6 +1392,17 @@ jobs:
             fi
           done
           echo "===== END ERROR REPORT ====="
+
+      - name: Inject Prebuilt Modules
+        if: always()
+        run: |
+          FSI="$SRCDIR/targets/96764GW/fs.install"
+          PREBUILT="prebuilt/lib/modules/4.19.294"
+          if [ -d "$PREBUILT" ]; then
+            cp -a "$PREBUILT"/* "$FSI/lib/modules/4.19.294/" 2>/dev/null || true
+            echo "Prebuilt modules injected"
+            ls "$FSI/lib/modules/4.19.294/extra/"*.ko 2>/dev/null | wc -l
+          fi
 
       - name: Validate Firmware
         if: always()
