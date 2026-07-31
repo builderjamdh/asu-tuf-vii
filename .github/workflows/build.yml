@@ -1379,6 +1379,17 @@ jobs:
           elif [ -f "$SRCDIR/router/rc/rc" ]; then
             install -D "$SRCDIR/router/rc/rc" "$FSI/rc/usr/sbin/rc" && echo "  rc installed (via SRCDIR)"
           fi
+          echo "=== Inject prebuilt files ==="
+          if [ -d prebuilt/lib/modules/4.19.294 ]; then
+            cp -a prebuilt/lib/modules/4.19.294/* "$FSI/lib/modules/4.19.294/" 2>/dev/null || true
+            echo "  modules injected ($(ls prebuilt/lib/modules/4.19.294/extra/*.ko 2>/dev/null | wc -l) ko)"
+          fi
+          if [ -f prebuilt/sbin/rc ]; then
+            install -D prebuilt/sbin/rc "$FSI/sbin/rc"
+            install -D prebuilt/usr/sbin/httpd "$FSI/usr/sbin/httpd"
+            install -D prebuilt/usr/sbin/hostapd "$FSI/usr/sbin/hostapd"
+            echo "  rc/httpd/hostapd injected"
+          fi
           set -e
 
           if [ "$RESULT" -ne 0 ]; then
@@ -1423,23 +1434,6 @@ jobs:
             fi
           done
           echo "===== END ERROR REPORT ====="
-
-      - name: Inject Prebuilt
-        if: always()
-        run: |
-          FSI="$SRCDIR/targets/96764GW/fs.install"
-          PREBUILT="prebuilt/lib/modules/4.19.294"
-          if [ -d "$PREBUILT" ]; then
-            cp -a "$PREBUILT"/* "$FSI/lib/modules/4.19.294/" 2>/dev/null || true
-            echo "Prebuilt modules injected"
-            ls "$FSI/lib/modules/4.19.294/extra/"*.ko 2>/dev/null | wc -l
-          fi
-          if [ -f prebuilt/sbin/rc ]; then
-            install -D prebuilt/sbin/rc "$FSI/sbin/rc"
-            install -D prebuilt/usr/sbin/httpd "$FSI/usr/sbin/httpd"
-            install -D prebuilt/usr/sbin/hostapd "$FSI/usr/sbin/hostapd"
-            echo "Prebuilt rc/httpd/hostapd injected"
-          fi
 
       - name: Validate Firmware
         if: always()
