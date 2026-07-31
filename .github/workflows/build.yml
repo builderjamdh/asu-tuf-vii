@@ -45,7 +45,7 @@ jobs:
             libssl-dev liblzma-dev liblzo2-dev python3 rsync wget curl unzip xxd \
             bc cpio lzop lz4 xz-utils libelf-dev libncurses-dev \
             libreadline-dev uuid-dev libuuid1 gperf libltdl-dev automake cmake \
-            libcurl4-openssl-dev libxml2-dev git-lfs ccache
+            libcurl4-openssl-dev libxml2-dev git-lfs ccache python3-pip
           git lfs install
           git lfs pull
           # autopoint 可能在 gettext 包里也可能独立，用 || true 兜底
@@ -1417,18 +1417,26 @@ jobs:
           # 官方 kernel 保证与官方一致，同时保留我们构建的 uboot/atf/rootfs。
           if [ "$RESULT" -eq 0 ] && [ "$IMAGE_EXIT" -eq 0 ]; then
             echo "=== Inject official kernel into pkgtb ==="
-            python3 -m pip install --quiet --user cryptography \
-              || python3 -m pip install --quiet --break-system-packages cryptography
-            PKG=$(find "$SRCDIR" -maxdepth 5 -name '*_nand_squashfs.pkgtb' \
-                  ! -name '*_loader*' 2>/dev/null | head -1)
-            echo "  target: $PKG"
-            if [ -z "$PKG" ]; then
-              echo "!! no _nand_squashfs.pkgtb found, injection skipped"
-            else
+            if ! python3 -c "import cryptography" 2>/dev/null; then
+              python3 -m pip install --quiet --user cryptography \
+                || python3 -m pip install --quiet --break-system-packages cryptography \
+                || python3 -m pip install --quiet cryptography
+            fi
+            python3 -c "import cryptography" \
+              || { echo "!! cryptography unavailable"; exit 1; }
+            FOUND=0
+            for PKG in $(find "$SRCDIR" -maxdepth 5 -name '*_nand_squashfs.pkgtb' \
+                         ! -name '*_loader*' 2>/dev/null); do
+              echo "  target: $PKG"
+              FOUND=1
               python3 "$GITHUB_WORKSPACE/.github/official-kernel/patch_pkgtb.py" \
                 --pkgtb "$PKG" --out "$PKG" \
                 --kernel "$GITHUB_WORKSPACE/.github/official-kernel/vmlinux.bin.lzo" \
                 --key "$SRCDIR/targets/keys/demo/GEN3/Krot-fld.pem" --verify
+            done
+            if [ "$FOUND" -eq 0 ]; then
+              echo "!! no _nand_squashfs.pkgtb found, injection skipped"
+            else
               echo "  official kernel injected + verified"
             fi
           fi
