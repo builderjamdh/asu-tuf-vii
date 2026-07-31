@@ -1230,13 +1230,13 @@ jobs:
 
           # Phase 1: 生成配置文件（rtconfig.h, .config 等）。yes "" 自动应答所有交互式提示。
           echo "=== Pass 1/2: configure + deps (-j32 -k) ==="
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j32 -k \
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j32 -k -s \
             CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee "$SRCDIR/build.log"
 
           # Phase 2: 并行编译。Phase 1 已生成 rtconfig.h 等配置。
           echo "=== Pass 2/2: parallel compile (-j32 -k) ==="
           set +e
-          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j32 -k \
+          FORCE=1 yes "" | make -C "$SRCDIR" "$MODEL" -j32 -k -s \
             CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log"
           RESULT=${PIPESTATUS[1]}
           set -e
