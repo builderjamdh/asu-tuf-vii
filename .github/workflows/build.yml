@@ -1343,6 +1343,11 @@ jobs:
           fi
 
           echo "=== Serial rebuild: rc ==="
+          STAGEDIR=$(find "$SRCDIR/bcmdrivers" -path "*/router/arm-glibc/stage" -type d 2>/dev/null | head -1)
+          if [ -n "$STAGEDIR" ]; then
+            mkdir -p "$STAGEDIR/usr/lib"
+            touch "$STAGEDIR/usr/lib/libcurl.la"
+          fi
           make -C "$SRCDIR" -j1 -k \
             rc CONFIGURE="$CONFIGURE_OVERRIDE" 2>&1 | tee -a "$SRCDIR/build.log" || true
           if [ -f "$SRCDIR/router/rc/rc" ]; then
