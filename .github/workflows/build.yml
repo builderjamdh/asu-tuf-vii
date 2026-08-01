@@ -1417,6 +1417,15 @@ jobs:
             cp -f prebuilt/usr/lib/* "$FSI/usr/lib/" 2>/dev/null || true
             echo "  prebuilt shared libs injected"
           fi
+          # 关键：rc 依赖 libcurl.so.4，而自建 rootfs 的 /lib 下可能残留
+          # 0 字节空文件（本次实测导致 rc 加载失败、内核 panic 回退）。
+          # 用 prebuilt 真实库覆盖 /lib 与 /usr/lib 的 libcurl.so.4，
+          # 并同步创建与 KS 一致的 usr/lib 符号链接链。
+          if [ -f prebuilt/usr/lib/libcurl.so.4 ]; then
+            cp -f prebuilt/usr/lib/libcurl.so.4 "$FSI/lib/libcurl.so.4"
+            cp -f prebuilt/usr/lib/libcurl.so.4 "$FSI/usr/lib/libcurl.so.4"
+            echo "  libcurl.so.4 replaced (0-byte guard)"
+          fi
 
           # 关键：make $MODEL（Pass 1/2）执行到 $(MAKE) buildimage 时已经
           # 把 rootfs.img / pkgtb 打包完了，上面的注入发生在打包之后，
