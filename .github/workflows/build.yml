@@ -1380,12 +1380,31 @@ jobs:
             install -D "$SRCDIR/router/rc/rc" "$FSI/rc/usr/sbin/rc" && echo "  rc installed (via SRCDIR)"
           fi
           echo "=== Inject prebuilt userspace ==="
-          if [ -f prebuilt/sbin/rc ]; then
-            install -D prebuilt/sbin/rc "$FSI/sbin/rc"
-            install -D prebuilt/usr/sbin/httpd "$FSI/usr/sbin/httpd"
-            install -D prebuilt/usr/sbin/hostapd "$FSI/usr/sbin/hostapd"
-            echo "  rc/httpd/hostapd injected"
-          fi
+           if [ -f prebuilt/sbin/rc ]; then
+             install -D prebuilt/sbin/rc "$FSI/sbin/rc"
+             install -D prebuilt/usr/sbin/httpd "$FSI/usr/sbin/httpd"
+             install -D prebuilt/usr/sbin/hostapd "$FSI/usr/sbin/hostapd"
+             echo "  rc/httpd/hostapd injected"
+           fi
+           # 关键：rc 按 argv[0] 名字分发 applet（{"init", init_main} 等）。
+           # 内核 exec /sbin/init 时必须存在指向 rc 的符号链接，否则
+           # kernel panic 直接回退。rc/Makefile install 本会创建这些链接，
+           # 但 rc 编译失败时用 prebuilt 注入就跳过了。这里从 rc/Makefile
+           # 提取全部 ln -sf rc <name> 目标重新生成（含 init/watchdog/
+           # hotplug/service/wpsaide 等），再加 busybox applet 链接。
+           if [ -f "$FSI/sbin/rc" ]; then
+             RCLINKS=$(grep -oP 'ln -sf rc \K[\w-]+' "$ROUTER_DIR/rc/Makefile" 2>/dev/null | sort -u)
+             N=0
+             for l in $RCLINKS; do
+               ln -sf rc "$FSI/sbin/$l" 2>/dev/null && N=$((N+1))
+             done
+             ln -sf rc "$FSI/sbin/init" 2>/dev/null || true
+             echo "  $N rc applet symlinks created (incl. sbin/init)"
+             for l in arp blkid blockdev depmod fdisk fsck fsck.minix fstrim ifconfig insmod klogd logread lsmod mdev mkswap modprobe poweroff rmmod route setconsole swapoff swapon syslogd udhcpc vconfig zcip; do
+               ln -sf ../bin/busybox "$FSI/sbin/$l" 2>/dev/null || true
+             done
+             echo "  busybox applet symlinks created"
+           fi
           # rc/httpd/hostapd 是 Koolshare 预编译二进制，必须配套注入
           # Koolshare 版的共享库（ldd /sbin/rc 列出的依赖），否则动态链接
           # 符号不匹配，rc（init 进程）起不来，固件必然回滚。
