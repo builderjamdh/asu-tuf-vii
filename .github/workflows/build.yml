@@ -39,13 +39,10 @@ jobs:
       - name: Install Dependencies
         run: |
           # 自托管 runner 上偶发 packagekitd 占用 dpkg lock 导致 apt 失败
-          # （exit 100，本次构建即因此失败），这里等待锁释放并加大超时
-          for i in $(seq 1 20); do
-            sudo fuser -v /var/lib/dpkg/lock-frontend 2>/dev/null
-            if sudo apt-get update -qq 2>/dev/null; then break; fi
-            echo "apt lock busy, retry $i/20..."; sleep 15
-          done
-          sudo apt-get install -y -qq \
+          # （exit 100，此前两次构建均因此失败），用 DPkg::Lock::Timeout
+          # 让 apt 自行等待锁释放，最长 10 分钟
+          sudo apt-get -o DPkg::Lock::Timeout=600 update -qq
+          sudo apt-get -o DPkg::Lock::Timeout=600 install -y -qq \
             build-essential flex bison gawk autoconf automake libtool \
             gettext texinfo intltool libglib2.0-dev zlib1g-dev \
             libssl-dev liblzma-dev liblzo2-dev python3 rsync wget curl unzip xxd \
