@@ -252,7 +252,7 @@ EXSTRING:=$(LBSTRING)
 ifneq ($(FW_JUMP),)
 export EXTENDNO := $(FW_JUMP)-g$(shell git $(ASUSWRT_SRC_GIT) log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")$(SDKEXTEND)$(EXSTRING)
 else
-export EXTENDNO := $(EXTENDNO)-g$(shell git $(ASUSWRT_SRC_GIT) log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")$(SDKEXTEND)$(EXSTRING)
+export EXTENDNO := 0-g$(shell git $(ASUSWRT_SRC_GIT) log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")$(SDKEXTEND)$(EXSTRING)
 endif
 else
 ifneq ($(EXTENDTYPE),)
@@ -263,7 +263,7 @@ endif
 ifneq ($(FW_JUMP),)
 export EXTENDNO := $(FW_JUMP)-g$(shell git $(ASUSWRT_SRC_GIT) log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")$(SDKEXTEND)$(EXSTRING)
 else
-export EXTENDNO := $(EXTENDNO)-g$(shell git $(ASUSWRT_SRC_GIT) log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")$(SDKEXTEND)$(EXSTRING)
+export EXTENDNO := 0-g$(shell git $(ASUSWRT_SRC_GIT) log --pretty=format:'%h' -n 1|sed -e "s,\([0-9a-z]\{7\}\)[0-9a-z]*,\1,")$(SDKEXTEND)$(EXSTRING)
 endif
 endif
 
