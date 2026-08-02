@@ -1207,6 +1207,102 @@ jobs:
             [ -f "$src" ] && cp -f "$src" "$dest" 2>/dev/null && echo "  $(basename $dest) staged" || true
           done
 
+          # ---- 恢复官方路径兼容符号链接 ----
+          # ~30 个 app Makefile 硬编码 -I$(TOP)/openssl/include(pjsip/tor/
+          # vsftpd/libxml2/httpd/rc...),而本树只带 openssl-1.1;
+          # Makefile:8094 引用 $(TOP)/curl-7.21.7 但树里只有 curl/。
+          ROUTER_DIR=release/src/router
+          if [ -d "$ROUTER_DIR/openssl-1.1" ] && [ ! -e "$ROUTER_DIR/openssl" ]; then
+            ln -s openssl-1.1 "$ROUTER_DIR/openssl"
+            echo "  symlink: $ROUTER_DIR/openssl -> openssl-1.1"
+          fi
+          if [ -d "$ROUTER_DIR/curl" ] && [ ! -e "$ROUTER_DIR/curl-7.21.7" ]; then
+            ln -s curl "$ROUTER_DIR/curl-7.21.7"
+            echo "  symlink: $ROUTER_DIR/curl-7.21.7 -> curl"
+          fi
+
+          # ---- busybox: 预生成 .config + include/autoconf.h ----
+          # GPL 归档自带 busybox-1.24.1/config_base(一份合法的 1.24.1 .config),
+          # 但没有任何规则把它复制进内层树;config.d/*.conf 只修改已存在的
+          # .config。结果编译时报 "include/autoconf.h: No such file or directory"。
+          # 按官方流程走一遍:config_base -> .config -> config.d 定制 -> 生成 autoconf.h。
+          BB_DIR="$ROUTER_DIR/busybox-1.24.1"
+          if [ -d "$BB_DIR" ]; then
+            BB_INNER="$BB_DIR/busybox-1.24.1"
+            if [ -f "$BB_INNER/config_base" ] && [ ! -f "$BB_INNER/.config" ]; then
+              cp -f "$BB_INNER/config_base" "$BB_INNER/.config"
+              echo "  busybox: .config copied from config_base"
+            fi
+            if [ -f "$BB_INNER/.config" ]; then
+              export PERL5LIB="$SRCDIR/hostTools/PerlLib:${PERL5LIB:-}"
+              export INSTALL_DIR="${INSTALL_DIR:-$SRCDIR/targets/96764GW/fs.install}"
+              for i in "$BB_DIR"/config.d/[0-9]*.conf; do
+                [ -f "$i" ] || continue
+                echo "  busybox config.d: $(basename "$i")"
+                perl "$i" "$BB_INNER/.config" || true
+              done
+              # 最佳努力:让 autoconf.h 现在就落盘;失败也不阻塞,
+              # 正式 pass 里内层 make 会按 Makefile:529 依赖规则自动重建。
+              ( cd "$BB_INNER" && yes "" | make silentoldconfig HOSTCC=gcc CC=gcc >/dev/null 2>&1 ) || true
+              if [ -f "$BB_INNER/include/autoconf.h" ]; then
+                echo "  busybox: include/autoconf.h generated OK"
+              else
+                echo "  busybox: include/autoconf.h deferred to build pass"
+              fi
+            fi
+          fi
+
+          # ---- iptables-1.4.x: 缺失的小写 UAPI 头 ----
+          # extensions/GNUmakefile.in 用 -I$(top_srcdir)/include 在 sysroot
+          # 之前搜索;但树里只有 Broadcom 时代的大写包装头(xt_CONNMARK.h
+          # include 的小写 xt_connmark.h 不存在),而 sysroot 的旧版缺
+          # XT_CONNMARK_SET_RETURN -> libxt_CONNMARK.c 编译失败。
+          # 把 canonical linux-4.19 uapi 头放进本地 include 目录(仅缺失文件)。
+          IPT_DIR="$ROUTER_DIR/iptables-1.4.x"
+          if [ -d "$IPT_DIR" ]; then
+            mkdir -p "$IPT_DIR/include/linux/netfilter" "$IPT_DIR/include/linux/netfilter_ipv4"
+            cat > "$IPT_DIR/include/linux/netfilter/xt_connmark.h" << 'IPTEOF'
+          /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
+          #ifndef _XT_CONNMARK_H
+          #define _XT_CONNMARK_H
+
+          #include <linux/types.h>
+
+          enum {
+          XT_CONNMARK_SET = 0,
+          XT_CONNMARK_SAVE,
+          XT_CONNMARK_RESTORE,
+          XT_CONNMARK_SET_RETURN,
+          };
+
+          enum {
+          D_SHIFT_LEFT = 0,
+          D_SHIFT_RIGHT,
+          };
+
+          struct xt_connmark_tginfo1 {
+          __u32 ctmark, ctmask, nfmask;
+          __u8 mode;
+          };
+
+          struct xt_connmark_tginfo2 {
+          __u32 ctmark, ctmask, nfmask;
+          __u8 mode;
+          __u8 shift_dir;
+          __u8 shift_bits;
+          __u8 pad;
+          };
+
+          struct xt_connmark_mtinfo1 {
+          __u32 mark, mask;
+          __u8 invert;
+          };
+
+          #endif /*_XT_CONNMARK_H*/
+          IPTEOF
+            echo "  iptables: generated include/linux/netfilter/xt_connmark.h"
+          fi
+
       - name: Compile (two-phase)
         run: |
           CONFIGURE_OVERRIDE="./configure --disable-option-checking LD=$TC_PATH/usr/bin/arm-buildroot-linux-gnueabi-ld --host=arm-buildroot-linux-gnueabi"
@@ -1495,12 +1591,22 @@ jobs:
           echo ""
           echo "--- Critical binary status (in final fs/) ---"
           FS="$SRCDIR/targets/96764GW/fs"
-          for bin in rc httpd hostapd dropbearmulti miniupnpd; do
+          for bin in rc httpd hostapd dropbearmulti miniupnpd busybox xtables-multi iptables; do
             found=$(find "$FS" -name "$bin" -type f 2>/dev/null | head -1)
             if [ -n "$found" ]; then
               echo "  OK  $bin ($(stat -c%s "$found") bytes)"
             else
               echo "  !! MISSING: $bin"
+            fi
+          done
+          echo ""
+          echo "--- Stub-bypassed components (deliberately not built from source) ---"
+          for bin in getdns stubby charon strongswan curl; do
+            found=$(find "$FS" -name "$bin" 2>/dev/null | head -1)
+            if [ -n "$found" ]; then
+              echo "  OK  $bin"
+            else
+              echo "  !! ABSENT: $bin (stubbed in build)"
             fi
           done
           echo ""
